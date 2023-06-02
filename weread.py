@@ -196,7 +196,7 @@ def get_chapter_info(bookId):
 
 def insert_to_notion(bookName, bookId, cover, sort, author,isbn,rating):
     """插入到notion"""
-    time.sleep(0.3)
+    time.sleep(0.7)
     parent = {
         "database_id": database_id,
         "type": "database_id"
@@ -331,6 +331,7 @@ def get_children(chapter, summary, bookmark_list):
                 "style"), i.get("colorStyle"), i.get("review").get("reviewId")))
     return children, grandchild
 
+
 def transform_id(book_id):
     id_length = len(book_id)
 
@@ -344,6 +345,7 @@ def transform_id(book_id):
     for i in range(id_length):
         result += format(ord(book_id[i]), 'x')
     return '4', [result]
+
 
 def calculate_book_str_id(book_id):
     md5 = hashlib.md5()
@@ -370,6 +372,7 @@ def calculate_book_str_id(book_id):
     md5.update(result.encode('utf-8'))
     result += md5.hexdigest()[0:3]
     return result
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
