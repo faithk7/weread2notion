@@ -167,7 +167,7 @@ def get_callout(content, style, colorStyle, reviewId):
 
 def check(bookId):
     """检查是否已经插入过 如果已经插入了就删除"""
-    time.sleep(0.3)
+    time.sleep(1)
     filter = {
         "property": "BookId",
         "rich_text": {
@@ -176,7 +176,7 @@ def check(bookId):
     }
     response = client.databases.query(database_id=database_id, filter=filter)
     for result in response["results"]:
-        time.sleep(0.3)
+        time.sleep(1)
         client.blocks.delete(block_id=result["id"])
 
 
@@ -196,7 +196,7 @@ def get_chapter_info(bookId):
 
 def insert_to_notion(bookName, bookId, cover, sort, author,isbn,rating):
     """插入到notion"""
-    time.sleep(0.7)
+    time.sleep(1)
     parent = {
         "database_id": database_id,
         "type": "database_id"
@@ -246,7 +246,7 @@ def insert_to_notion(bookName, bookId, cover, sort, author,isbn,rating):
 def add_children(id, children):
     results = []
     for i in range(0, len(children)//100+1):
-        time.sleep(0.3)
+        time.sleep(1)
         response = client.blocks.children.append(
             block_id=id, children=children[i*100:(i+1)*100])
         results.extend(response.get("results"))
@@ -255,7 +255,7 @@ def add_children(id, children):
 
 def add_grandchild(grandchild, results):
     for key, value in grandchild.items():
-        time.sleep(0.3)
+        time.sleep(1)
         id = results[key].get("id")
         client.blocks.children.append(block_id=id, children=[value])
 
