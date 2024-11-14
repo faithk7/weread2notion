@@ -54,7 +54,7 @@ def insert_to_notion(
         },
     }
     read_info = get_read_info(bookId=bookId)
-    if read_info != None:
+    if read_info is not None:
         markedStatus = read_info.get("markedStatus", 0)
         readingTime = read_info.get("readingTime", 0)
         format_time = ""
@@ -208,7 +208,7 @@ def transform_id(book_id):
 
 
 def calculate_book_str_id(book_id):
-    md5 = hashlib.md5()
+    md5 = hashlib.md5(usedforsecurity=False)
     md5.update(book_id.encode("utf-8"))
     digest = md5.hexdigest()
     result = digest[0:3]
@@ -228,7 +228,7 @@ def calculate_book_str_id(book_id):
     if len(result) < 20:
         result += digest[0 : 20 - len(result)]
 
-    md5 = hashlib.md5()
+    md5 = hashlib.md5(usedforsecurity=False)
     md5.update(result.encode("utf-8"))
     result += md5.hexdigest()[0:3]
     return result

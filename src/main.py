@@ -23,15 +23,19 @@ if __name__ == "__main__":
     parser.add_argument("notion_token")
     parser.add_argument("database_id")
     options = parser.parse_args()
+
     weread_cookie = options.weread_cookie
     database_id = options.database_id
     notion_token = options.notion_token
+
     session = requests.Session()
     session.cookies = parse_cookie_string(weread_cookie)
     client = Client(auth=notion_token, log_level=logging.ERROR)
     session.get(WEREAD_URL)
-    latest_sort = get_sort()
-    books = get_notebooklist()
+
+    latest_sort = get_sort(client, database_id)
+    books = get_notebooklist(session)
+
     if books is not None:
         for book in books:
             sort = book["sort"]
@@ -42,11 +46,13 @@ if __name__ == "__main__":
             cover = book.get("cover")
             bookId = book.get("bookId")
             author = book.get("author")
-            check(bookId)
+
+            check(client, database_id, bookId)
             chapter = get_chapter_info(session, bookId)
             bookmark_list = get_bookmark_list(session, bookId)
             summary, reviews = get_review_list(session, bookId)
             bookmark_list.extend(reviews)
+
             bookmark_list = sorted(
                 bookmark_list,
                 key=lambda x: (
@@ -63,7 +69,9 @@ if __name__ == "__main__":
             )
             isbn, rating = get_bookinfo(session, bookId)
             children, grandchild = get_children(chapter, summary, bookmark_list)
-            id = insert_to_notion(title, bookId, cover, sort, author, isbn, rating)
+            id = insert_to_notion(
+                client, database_id, title, bookId, cover, sort, author, isbn, rating
+            )
             results = add_children(id, children)
             if len(grandchild) > 0 and results is not None:
                 add_grandchild(grandchild, results)
