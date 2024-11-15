@@ -34,7 +34,7 @@ def get_chapter_info(session, bookId):
 
 
 def insert_to_notion(
-    client, database_id, bookName, bookId, cover, sort, author, isbn, rating
+    client, database_id, bookName, bookId, cover, sort, author, isbn, rating, session
 ):
     """插入到notion"""
     time.sleep(1)
@@ -53,7 +53,7 @@ def insert_to_notion(
             "files": [{"type": "external", "name": "Cover", "external": {"url": cover}}]
         },
     }
-    read_info = get_read_info(bookId=bookId)
+    read_info = get_read_info(session, bookId=bookId)
     if read_info is not None:
         markedStatus = read_info.get("markedStatus", 0)
         readingTime = read_info.get("readingTime", 0)

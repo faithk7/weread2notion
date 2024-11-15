@@ -70,8 +70,17 @@ if __name__ == "__main__":
             isbn, rating = get_bookinfo(session, bookId)
             children, grandchild = get_children(chapter, summary, bookmark_list)
             id = insert_to_notion(
-                client, database_id, title, bookId, cover, sort, author, isbn, rating
+                client,
+                database_id,
+                title,
+                bookId,
+                cover,
+                sort,
+                author,
+                isbn,
+                rating,
+                session,
             )
-            results = add_children(id, children)
+            results = add_children(client, id, children)
             if len(grandchild) > 0 and results is not None:
-                add_grandchild(grandchild, results)
+                add_grandchild(client, grandchild, results)
