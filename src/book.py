@@ -1,3 +1,7 @@
+from typing import Dict, List, Optional, Tuple
+
+import requests
+
 from constants import (
     WEREAD_BOOK_INFO,
     WEREAD_BOOKMARKLIST_URL,
@@ -8,7 +12,7 @@ from constants import (
 )
 
 
-def get_bookmark_list(session, bookId):
+def get_bookmark_list(session: requests.Session, bookId: str) -> Optional[List[Dict]]:
     """获取我的划线"""
     params = dict(bookId=bookId)
     r = session.get(WEREAD_BOOKMARKLIST_URL, params=params)
@@ -22,7 +26,7 @@ def get_bookmark_list(session, bookId):
     return None
 
 
-def get_read_info(session, bookId):
+def get_read_info(session: requests.Session, bookId: str) -> Optional[Dict]:
     params = dict(bookId=bookId, readingDetail=1, readingBookIndex=1, finishedDate=1)
     r = session.get(WEREAD_READ_INFO_URL, params=params)
     if r.ok:
@@ -30,11 +34,12 @@ def get_read_info(session, bookId):
     return None
 
 
-def get_bookinfo(session, bookId):
+def get_bookinfo(session: requests.Session, bookId: str) -> Tuple[str, float]:
     """获取书的详情"""
     params = dict(bookId=bookId)
     r = session.get(WEREAD_BOOK_INFO, params=params)
     isbn = ""
+    newRating = 0.0
     if r.ok:
         data = r.json()
         isbn = data["isbn"]
@@ -42,7 +47,7 @@ def get_bookinfo(session, bookId):
     return (isbn, newRating)
 
 
-def get_notebooklist(session):
+def get_notebooklist(session: requests.Session) -> Optional[List[Dict]]:
     """获取笔记本列表"""
     r = session.get(WEREAD_NOTEBOOKS_URL)
     if r.ok:
@@ -55,7 +60,9 @@ def get_notebooklist(session):
     return None
 
 
-def get_chapter_info(session, bookId):
+def get_chapter_info(
+    session: requests.Session, bookId: str
+) -> Optional[Dict[int, Dict]]:
     """获取章节信息"""
     body = {"bookIds": [bookId], "synckeys": [0], "teenmode": 0}
     r = session.post(WEREAD_CHAPTER_INFO, json=body)
@@ -70,7 +77,9 @@ def get_chapter_info(session, bookId):
     return None
 
 
-def get_review_list(session, bookId):
+def get_review_list(
+    session: requests.Session, bookId: str
+) -> Tuple[List[Dict], List[Dict]]:
     """获取笔记"""
     params = dict(bookId=bookId, listType=11, mine=1, syncKey=0)
     r = session.get(WEREAD_REVIEW_LIST_URL, params=params)
@@ -79,15 +88,15 @@ def get_review_list(session, bookId):
     reviews = list(filter(lambda x: x.get("review").get("type") == 1, reviews))
     reviews = list(map(lambda x: x.get("review"), reviews))
     reviews = list(map(lambda x: {**x, "markText": x.pop("content")}, reviews))
-    return summary, reviews
+    return (summary, reviews)
 
 
-def get_table_of_contents():
+def get_table_of_contents() -> Dict:
     """获取目录"""
     return {"type": "table_of_contents", "table_of_contents": {"color": "default"}}
 
 
-def get_heading(level, content):
+def get_heading(level: int, content: str) -> Dict:
     if level == 1:
         heading = "heading_1"
     elif level == 2:
@@ -111,7 +120,7 @@ def get_heading(level, content):
     }
 
 
-def get_quote(content):
+def get_quote(content: str) -> Dict:
     return {
         "type": "quote",
         "quote": {

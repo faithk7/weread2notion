@@ -2,12 +2,16 @@ import hashlib
 import re
 import time
 from datetime import datetime
+from typing import Dict, List, Optional, Tuple
+
+import requests
+from notion_client import Client
 
 from book import get_heading, get_quote, get_read_info, get_table_of_contents
 from util import get_callout
 
 
-def check(client, database_id, bookId):
+def check(client: Client, database_id: str, bookId: str) -> None:
     """检查是否已经插入过 如果已经插入了就删除"""
     time.sleep(1)
     filter = {"property": "BookId", "rich_text": {"equals": bookId}}
@@ -18,10 +22,20 @@ def check(client, database_id, bookId):
 
 
 def insert_to_notion(
-    client, database_id, bookName, bookId, cover, sort, author, isbn, rating, session
-):
+    client: Client,
+    database_id: str,
+    bookName: str,
+    bookId: str,
+    cover: str,
+    sort: int,
+    author: str,
+    isbn: str,
+    rating: float,
+    session: requests.Session,
+) -> str:
     """插入到notion"""
     time.sleep(1)
+
     parent = {"database_id": database_id, "type": "database_id"}
     properties = {
         "BookName": {"title": [{"type": "text", "text": {"content": bookName}}]},
@@ -71,25 +85,29 @@ def insert_to_notion(
     return id
 
 
-def add_children(client, id, children):
+def add_children(client: Client, id: str, children: List[Dict]) -> Optional[List[Dict]]:
     results = []
+
     for i in range(0, len(children) // 100 + 1):
         time.sleep(1)  # NOTE: TEMP FIX
         response = client.blocks.children.append(
             block_id=id, children=children[i * 100 : (i + 1) * 100]
         )
         results.extend(response.get("results"))
+
     return results if len(results) == len(children) else None
 
 
-def add_grandchild(client, grandchild, results):
+def add_grandchild(
+    client: Client, grandchild: Dict[int, Dict], results: List[Dict]
+) -> None:
     for key, value in grandchild.items():
         time.sleep(1)
         id = results[key].get("id")
         client.blocks.children.append(block_id=id, children=[value])
 
 
-def get_sort(client, database_id):
+def get_sort(client: Client, database_id: str) -> int:
     """获取database中的最新时间"""
     filter = {"property": "Sort", "number": {"is_not_empty": True}}
     sorts = [
@@ -103,10 +121,13 @@ def get_sort(client, database_id):
     )
     if len(response.get("results")) == 1:
         return response.get("results")[0].get("properties").get("Sort").get("number")
+
     return 0
 
 
-def get_children(chapter, summary, bookmark_list):
+def get_children(
+    chapter: Optional[Dict[int, Dict]], summary: List[Dict], bookmark_list: List[Dict]
+) -> Tuple[List[Dict], Dict[int, Dict]]:
     children = []
     grandchild = {}
 
@@ -169,7 +190,7 @@ def get_children(chapter, summary, bookmark_list):
     return children, grandchild
 
 
-def transform_id(book_id):
+def transform_id(book_id: str) -> Tuple[str, List[str]]:
     id_length = len(book_id)
 
     if re.match("^\d*$", book_id):
@@ -184,7 +205,7 @@ def transform_id(book_id):
     return "4", [result]
 
 
-def calculate_book_str_id(book_id):
+def calculate_book_str_id(book_id: str) -> str:
     md5 = hashlib.md5(usedforsecurity=False)
     md5.update(book_id.encode("utf-8"))
     digest = md5.hexdigest()
