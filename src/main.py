@@ -4,14 +4,19 @@ import logging
 import requests
 from notion_client import Client
 
-from book import get_bookinfo, get_bookmark_list, get_chapter_info, get_review_list
+from book import (
+    get_bookinfo,
+    get_bookmark_list,
+    get_chapter_info,
+    get_notebooklist,
+    get_review_list,
+)
 from constants import WEREAD_URL
 from notion import (
     add_children,
     add_grandchild,
     check,
     get_children,
-    get_notebooklist,
     get_sort,
     insert_to_notion,
 )

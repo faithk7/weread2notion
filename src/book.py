@@ -2,6 +2,7 @@ from constants import (
     WEREAD_BOOK_INFO,
     WEREAD_BOOKMARKLIST_URL,
     WEREAD_CHAPTER_INFO,
+    WEREAD_NOTEBOOKS_URL,
     WEREAD_READ_INFO_URL,
     WEREAD_REVIEW_LIST_URL,
 )
@@ -39,6 +40,19 @@ def get_bookinfo(session, bookId):
         isbn = data["isbn"]
         newRating = data["newRating"] / 1000
     return (isbn, newRating)
+
+
+def get_notebooklist(session):
+    """获取笔记本列表"""
+    r = session.get(WEREAD_NOTEBOOKS_URL)
+    if r.ok:
+        data = r.json()
+        books = data.get("books")
+        books.sort(key=lambda x: x["sort"])
+        return books
+    else:
+        print(r.text)
+    return None
 
 
 def get_chapter_info(session, bookId):

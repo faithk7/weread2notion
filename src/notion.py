@@ -4,7 +4,6 @@ import time
 from datetime import datetime
 
 from book import get_heading, get_quote, get_read_info, get_table_of_contents
-from constants import WEREAD_CHAPTER_INFO, WEREAD_NOTEBOOKS_URL
 from util import get_callout
 
 
@@ -16,21 +15,6 @@ def check(client, database_id, bookId):
     for result in response["results"]:
         time.sleep(1)
         client.blocks.delete(block_id=result["id"])
-
-
-def get_chapter_info(session, bookId):
-    """获取章节信息"""
-    body = {"bookIds": [bookId], "synckeys": [0], "teenmode": 0}
-    r = session.post(WEREAD_CHAPTER_INFO, json=body)
-    if (
-        r.ok
-        and "data" in r.json()
-        and len(r.json()["data"]) == 1
-        and "updated" in r.json()["data"][0]
-    ):
-        update = r.json()["data"][0]["updated"]
-        return {item["chapterUid"]: item for item in update}
-    return None
 
 
 def insert_to_notion(
@@ -90,7 +74,7 @@ def insert_to_notion(
 def add_children(client, id, children):
     results = []
     for i in range(0, len(children) // 100 + 1):
-        time.sleep(1)
+        time.sleep(1)  # NOTE: TEMP FIX
         response = client.blocks.children.append(
             block_id=id, children=children[i * 100 : (i + 1) * 100]
         )
@@ -103,19 +87,6 @@ def add_grandchild(client, grandchild, results):
         time.sleep(1)
         id = results[key].get("id")
         client.blocks.children.append(block_id=id, children=[value])
-
-
-def get_notebooklist(session):
-    """获取笔记本列表"""
-    r = session.get(WEREAD_NOTEBOOKS_URL)
-    if r.ok:
-        data = r.json()
-        books = data.get("books")
-        books.sort(key=lambda x: x["sort"])
-        return books
-    else:
-        print(r.text)
-    return None
 
 
 def get_sort(client, database_id):
@@ -138,6 +109,7 @@ def get_sort(client, database_id):
 def get_children(chapter, summary, bookmark_list):
     children = []
     grandchild = {}
+
     if chapter is not None:
         # 添加目录
         children.append(get_table_of_contents())
@@ -147,6 +119,7 @@ def get_children(chapter, summary, bookmark_list):
             if chapterUid not in d:
                 d[chapterUid] = []
             d[chapterUid].append(data)
+
         for key, value in d.items():
             if key in chapter:
                 # 添加章节
@@ -155,6 +128,7 @@ def get_children(chapter, summary, bookmark_list):
                         chapter.get(key).get("level"), chapter.get(key).get("title")
                     )
                 )
+
             for i in value:
                 callout = get_callout(
                     i.get("markText"),
@@ -163,6 +137,7 @@ def get_children(chapter, summary, bookmark_list):
                     i.get("reviewId"),
                 )
                 children.append(callout)
+
                 if i.get("abstract") is not None and i.get("abstract") != "":
                     quote = get_quote(i.get("abstract"))
                     grandchild[len(children) - 1] = quote
@@ -178,6 +153,7 @@ def get_children(chapter, summary, bookmark_list):
                     data.get("reviewId"),
                 )
             )
+
     if summary is not None and len(summary) > 0:
         children.append(get_heading(1, "点评"))
         for i in summary:
@@ -189,6 +165,7 @@ def get_children(chapter, summary, bookmark_list):
                     i.get("review").get("reviewId"),
                 )
             )
+
     return children, grandchild
 
 
