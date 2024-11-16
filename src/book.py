@@ -10,6 +10,7 @@ from constants import (
     WEREAD_READ_INFO_URL,
     WEREAD_REVIEW_LIST_URL,
 )
+from util import get_callout
 
 
 def get_bookmark_list(session: requests.Session, bookId: str) -> Optional[List[Dict]]:
@@ -134,3 +135,68 @@ def get_quote(content: str) -> Dict:
             "color": "default",
         },
     }
+
+
+def get_children(
+    chapter: Optional[Dict[int, Dict]], summary: List[Dict], bookmark_list: List[Dict]
+) -> Tuple[List[Dict], Dict[int, Dict]]:
+    children = []
+    grandchild = {}
+
+    if chapter is not None:
+        # 添加目录
+        children.append(get_table_of_contents())
+        d = {}
+        for data in bookmark_list:
+            chapterUid = data.get("chapterUid", 1)
+            if chapterUid not in d:
+                d[chapterUid] = []
+            d[chapterUid].append(data)
+
+        for key, value in d.items():
+            if key in chapter:
+                # 添加章节
+                children.append(
+                    get_heading(
+                        chapter.get(key).get("level"), chapter.get(key).get("title")
+                    )
+                )
+
+            for i in value:
+                callout = get_callout(
+                    i.get("markText"),
+                    data.get("style"),
+                    i.get("colorStyle"),
+                    i.get("reviewId"),
+                )
+                children.append(callout)
+
+                if i.get("abstract") is not None and i.get("abstract") != "":
+                    quote = get_quote(i.get("abstract"))
+                    grandchild[len(children) - 1] = quote
+
+    else:
+        # 如果没有章节信息
+        for data in bookmark_list:
+            children.append(
+                get_callout(
+                    data.get("markText"),
+                    data.get("style"),
+                    data.get("colorStyle"),
+                    data.get("reviewId"),
+                )
+            )
+
+    if summary is not None and len(summary) > 0:
+        children.append(get_heading(1, "点评"))
+        for i in summary:
+            children.append(
+                get_callout(
+                    i.get("review").get("content"),
+                    i.get("style"),
+                    i.get("colorStyle"),
+                    i.get("review").get("reviewId"),
+                )
+            )
+
+    return children, grandchild

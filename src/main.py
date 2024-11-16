@@ -8,18 +8,12 @@ from book import (
     get_bookinfo,
     get_bookmark_list,
     get_chapter_info,
+    get_children,
     get_notebooklist,
     get_review_list,
 )
 from constants import WEREAD_URL
-from notion import (
-    add_children,
-    add_grandchild,
-    check,
-    get_children,
-    get_sort,
-    insert_to_notion,
-)
+from notion import add_children, add_grandchild, check, get_sort, insert_to_notion
 from util import parse_cookie_string
 
 if __name__ == "__main__":
