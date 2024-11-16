@@ -35,51 +35,49 @@ if __name__ == "__main__":
     latest_sort = get_sort(client, database_id)
     books = get_notebooklist(session)
 
-    if books is not None:
-        for book in books:
-            sort = book["sort"]
-            if sort <= latest_sort:
-                continue
-            book = book.get("book")
-            title = book.get("title")
-            cover = book.get("cover")
-            bookId = book.get("bookId")
-            author = book.get("author")
+    assert books is not None, "获取书架和笔记失败"
 
-            check(client, database_id, bookId)
-            chapter = get_chapter_info(session, bookId)
-            bookmark_list = get_bookmark_list(session, bookId)
-            summary, reviews = get_review_list(session, bookId)
-            bookmark_list.extend(reviews)
+    for book in books:
+        sort = book["sort"]
+        if sort <= latest_sort:
+            continue
+        book = book.get("book")
+        title = book.get("title")
+        cover = book.get("cover")
+        bookId = book.get("bookId")
+        author = book.get("author")
 
-            bookmark_list = sorted(
-                bookmark_list,
-                key=lambda x: (
-                    x.get("chapterUid", 1),
-                    (
-                        0
-                        if (
-                            x.get("range", "") == ""
-                            or x.get("range").split("-")[0] == ""
-                        )
-                        else int(x.get("range").split("-")[0])
-                    ),
+        check(client, database_id, bookId)
+        chapter = get_chapter_info(session, bookId)
+        bookmark_list = get_bookmark_list(session, bookId)
+        summary, reviews = get_review_list(session, bookId)
+        bookmark_list.extend(reviews)
+
+        bookmark_list = sorted(
+            bookmark_list,
+            key=lambda x: (
+                x.get("chapterUid", 1),
+                (
+                    0
+                    if (x.get("range", "") == "" or x.get("range").split("-")[0] == "")
+                    else int(x.get("range").split("-")[0])
                 ),
-            )
-            isbn, rating = get_bookinfo(session, bookId)
-            children, grandchild = get_children(chapter, summary, bookmark_list)
-            id = insert_to_notion(
-                client,
-                database_id,
-                title,
-                bookId,
-                cover,
-                sort,
-                author,
-                isbn,
-                rating,
-                session,
-            )
-            results = add_children(client, id, children)
-            if len(grandchild) > 0 and results is not None:
-                add_grandchild(client, grandchild, results)
+            ),
+        )
+        isbn, rating = get_bookinfo(session, bookId)
+        children, grandchild = get_children(chapter, summary, bookmark_list)
+        id = insert_to_notion(
+            client,
+            database_id,
+            title,
+            bookId,
+            cover,
+            sort,
+            author,
+            isbn,
+            rating,
+            session,
+        )
+        results = add_children(client, id, children)
+        if len(grandchild) > 0 and results is not None:
+            add_grandchild(client, grandchild, results)
