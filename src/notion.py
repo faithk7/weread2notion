@@ -8,6 +8,7 @@ import requests
 from notion_client import Client
 
 from book import get_heading, get_quote, get_read_info, get_table_of_contents
+from logger import logger
 from util import get_callout
 
 
@@ -35,6 +36,8 @@ def insert_to_notion(
 ) -> str:
     """插入到notion"""
     time.sleep(1)
+
+    logger.info(f"Inserting book: {bookName} with ID: {bookId}")
 
     parent = {"database_id": database_id, "type": "database_id"}
     properties = {

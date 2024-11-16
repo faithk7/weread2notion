@@ -16,6 +16,7 @@ def get_bookmark_list(session: requests.Session, bookId: str) -> Optional[List[D
     """获取我的划线"""
     params = dict(bookId=bookId)
     r = session.get(WEREAD_BOOKMARKLIST_URL, params=params)
+
     if r.ok:
         updated = r.json().get("updated")
         updated = sorted(
