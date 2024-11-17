@@ -65,6 +65,7 @@ if __name__ == "__main__":
             ),
         )
         isbn, rating = get_bookinfo(session, bookId)
+
         children, grandchild = get_children(chapter, summary, bookmark_list)
         id = insert_to_notion(
             client,
