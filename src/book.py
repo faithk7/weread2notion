@@ -10,16 +10,23 @@ from constants import (
     WEREAD_READ_INFO_URL,
     WEREAD_REVIEW_LIST_URL,
 )
-from util import get_callout
+from logger import logger
+from util import get_callout_block
 
 
 def get_bookmark_list(session: requests.Session, bookId: str) -> Optional[List[Dict]]:
-    """获取我的划线"""
+    """获取我的划线
+    Returns:
+        List[Dict]: 本书的划线列表
+    """
+
     params = dict(bookId=bookId)
     r = session.get(WEREAD_BOOKMARKLIST_URL, params=params)
 
     if r.ok:
         updated = r.json().get("updated")
+        logger.info(f"Updated bookmark list: {updated}")
+
         updated = sorted(
             updated,
             key=lambda x: (x.get("chapterUid", 1), int(x.get("range").split("-")[0])),
@@ -163,7 +170,7 @@ def get_children(
                 )
 
             for i in value:
-                callout = get_callout(
+                callout = get_callout_block(
                     i.get("markText"),
                     data.get("style"),
                     i.get("colorStyle"),
@@ -176,10 +183,10 @@ def get_children(
                     grandchild[len(children) - 1] = quote
 
     else:
-        # 如果没有章节信息
+        # 如果没有章节信息 - grandchild 为空
         for data in bookmark_list:
             children.append(
-                get_callout(
+                get_callout_block(
                     data.get("markText"),
                     data.get("style"),
                     data.get("colorStyle"),
@@ -191,12 +198,13 @@ def get_children(
         children.append(get_heading(1, "点评"))
         for i in summary:
             children.append(
-                get_callout(
+                get_callout_block(
                     i.get("review").get("content"),
                     i.get("style"),
                     i.get("colorStyle"),
                     i.get("review").get("reviewId"),
                 )
             )
-
+    logger.info(f"Children: {children}")
+    logger.info(f"Grandchild: {grandchild}")
     return children, grandchild

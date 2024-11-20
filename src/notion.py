@@ -121,6 +121,9 @@ def get_sort(client: Client, database_id: str) -> int:
         database_id=database_id, filter=filter, sorts=sorts, page_size=1
     )
     if len(response.get("results")) == 1:
+        logger.info(
+            f"Latest sort: {response.get('results')[0].get('properties').get('Sort').get('number')}"
+        )
         return response.get("results")[0].get("properties").get("Sort").get("number")
 
     return 0

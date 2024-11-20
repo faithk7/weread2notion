@@ -120,7 +120,7 @@ def get_quote(content):
     }
 
 
-def get_callout(content, style, colorStyle, reviewId):
+def get_callout_block(content, style, colorStyle, reviewId):
     # 根据不同的划线样式设置不同的emoji 直线type=0 背景颜色是1 波浪线是2
     emoji = "🌟"
     if style == 0:
@@ -305,7 +305,7 @@ def get_children(chapter, summary, bookmark_list):
                     )
                 )
             for i in value:
-                callout = get_callout(
+                callout = get_callout_block(
                     i.get("markText"),
                     data.get("style"),
                     i.get("colorStyle"),
@@ -320,7 +320,7 @@ def get_children(chapter, summary, bookmark_list):
         # 如果没有章节信息
         for data in bookmark_list:
             children.append(
-                get_callout(
+                get_callout_block(
                     data.get("markText"),
                     data.get("style"),
                     data.get("colorStyle"),
@@ -331,7 +331,7 @@ def get_children(chapter, summary, bookmark_list):
         children.append(get_heading(1, "点评"))
         for i in summary:
             children.append(
-                get_callout(
+                get_callout_block(
                     i.get("review").get("content"),
                     i.get("style"),
                     i.get("colorStyle"),

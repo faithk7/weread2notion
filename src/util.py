@@ -48,7 +48,7 @@ def calculate_book_str_id(book_id: str) -> str:
     return result
 
 
-def parse_cookie_string(cookie_string):
+def parse_cookie_string(cookie_string: str):
     cookie = SimpleCookie()
     cookie.load(cookie_string)
     cookies_dict = {}
@@ -59,7 +59,7 @@ def parse_cookie_string(cookie_string):
     return cookiejar
 
 
-def get_callout(content, style, colorStyle, reviewId):
+def get_callout_block(content: str, style: int, colorStyle: int, reviewId: str) -> dict:
     # 根据不同的划线样式设置不同的emoji 直线type=0 背景颜色是1 波浪线是2
     emoji = "🌟"
     if style == 0:
