@@ -14,13 +14,26 @@ from logger import logger
 from util import get_callout_block
 
 
-def get_bookmark_list(session: requests.Session, bookId: str) -> Optional[List[Dict]]:
+class Book:
+    def __init__(self, book_id: str, title: str, author: str, cover: str, sort: int):
+        self.book_id = book_id
+        self.title = title
+        self.author = author
+        self.cover = cover
+        self.sort = sort
+
+        self.bookmark_list = []
+        self.summary = []
+        self.reviews = []
+
+
+def get_bookmark_list(session: requests.Session, book_id: str) -> Optional[List[Dict]]:
     """获取我的划线
     Returns:
         List[Dict]: 本书的划线列表
     """
 
-    params = dict(bookId=bookId)
+    params = dict(book_id=book_id)
     r = session.get(WEREAD_BOOKMARKLIST_URL, params=params)
 
     if r.ok:
@@ -35,17 +48,17 @@ def get_bookmark_list(session: requests.Session, bookId: str) -> Optional[List[D
     return None
 
 
-def get_read_info(session: requests.Session, bookId: str) -> Optional[Dict]:
-    params = dict(bookId=bookId, readingDetail=1, readingBookIndex=1, finishedDate=1)
+def get_read_info(session: requests.Session, book_id: str) -> Optional[Dict]:
+    params = dict(book_id=book_id, readingDetail=1, readingBookIndex=1, finishedDate=1)
     r = session.get(WEREAD_READ_INFO_URL, params=params)
     if r.ok:
         return r.json()
     return None
 
 
-def get_bookinfo(session: requests.Session, bookId: str) -> Tuple[str, float]:
+def get_bookinfo(session: requests.Session, book_id: str) -> Tuple[str, float]:
     """获取书的详情"""
-    params = dict(bookId=bookId)
+    params = dict(book_id=book_id)
     r = session.get(WEREAD_BOOK_INFO, params=params)
     isbn = ""
     newRating = 0.0
@@ -62,6 +75,8 @@ def get_notebooklist(session: requests.Session) -> Optional[List[Dict]]:
     if r.ok:
         data = r.json()
         books = data.get("books")
+        print("len(books)", len(books))
+        print("books", books[:5])
         books.sort(key=lambda x: x["sort"])
         return books
     else:
@@ -70,10 +85,10 @@ def get_notebooklist(session: requests.Session) -> Optional[List[Dict]]:
 
 
 def get_chapter_info(
-    session: requests.Session, bookId: str
+    session: requests.Session, book_id: str
 ) -> Optional[Dict[int, Dict]]:
     """获取章节信息"""
-    body = {"bookIds": [bookId], "synckeys": [0], "teenmode": 0}
+    body = {"book_ids": [book_id], "synckeys": [0], "teenmode": 0}
     r = session.post(WEREAD_CHAPTER_INFO, json=body)
     if (
         r.ok
@@ -87,10 +102,10 @@ def get_chapter_info(
 
 
 def get_review_list(
-    session: requests.Session, bookId: str
+    session: requests.Session, book_id: str
 ) -> Tuple[List[Dict], List[Dict]]:
     """获取笔记"""
-    params = dict(bookId=bookId, listType=11, mine=1, syncKey=0)
+    params = dict(book_id=book_id, listType=11, mine=1, syncKey=0)
     r = session.get(WEREAD_REVIEW_LIST_URL, params=params)
     reviews = r.json().get("reviews")
     summary = list(filter(lambda x: x.get("review").get("type") == 4, reviews))

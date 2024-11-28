@@ -5,6 +5,7 @@ import requests
 from notion_client import Client
 
 from book import (
+    Book,
     get_bookinfo,
     get_bookmark_list,
     get_chapter_info,
@@ -21,6 +22,7 @@ if __name__ == "__main__":
     parser.add_argument("weread_cookie")
     parser.add_argument("notion_token")
     parser.add_argument("database_id")
+    # TODO: add a arg parse method in the util.py
     options = parser.parse_args()
 
     weread_cookie = options.weread_cookie
@@ -33,11 +35,13 @@ if __name__ == "__main__":
     session.get(WEREAD_URL)
 
     latest_sort = get_sort(client, database_id)
+    # NOTE: this is the starting point of getting all books
     books = get_notebooklist(session)
 
     assert books is not None, "获取书架和笔记失败"
 
     for book in books:
+        # TODO: have a book object defined
         sort = book["sort"]
         if sort <= latest_sort:
             continue
@@ -46,6 +50,8 @@ if __name__ == "__main__":
         cover = book.get("cover")
         bookId = book.get("bookId")
         author = book.get("author")
+
+        book = Book(bookId, title, author, cover, sort)
 
         check(client, database_id, bookId)
         chapter = get_chapter_info(session, bookId)
@@ -67,6 +73,7 @@ if __name__ == "__main__":
         isbn, rating = get_bookinfo(session, bookId)
 
         children, grandchild = get_children(chapter, summary, bookmark_list)
+        # TODO: have a NotionDBManager object
         id = insert_to_notion(
             client,
             database_id,
