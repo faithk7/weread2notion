@@ -5,15 +5,15 @@ from typing import Dict, List, Optional
 import requests
 from notion_client import Client
 
-from book import get_read_info
+from book import Book, get_read_info
 from logger import logger
 from util import calculate_book_str_id
 
 
-def check(client: Client, database_id: str, bookId: str) -> None:
+def check(client: Client, database_id: str, book_id: str) -> None:
     """检查是否已经插入过 如果已经插入了就删除"""
     time.sleep(1)
-    filter = {"property": "BookId", "rich_text": {"equals": bookId}}
+    filter = {"property": "book_id", "rich_text": {"equals": book_id}}
     response = client.databases.query(database_id=database_id, filter=filter)
     for result in response["results"]:
         time.sleep(1)
@@ -23,11 +23,7 @@ def check(client: Client, database_id: str, bookId: str) -> None:
 def insert_to_notion(
     client: Client,
     database_id: str,
-    bookName: str,
-    bookId: str,
-    cover: str,
-    sort: int,
-    author: str,
+    book: Book,
     isbn: str,
     rating: float,
     session: requests.Session,
@@ -35,24 +31,26 @@ def insert_to_notion(
     """插入到notion"""
     time.sleep(1)
 
-    logger.info(f"Inserting book: {bookName} with ID: {bookId}")
+    logger.info(f"Inserting book: {book.title} with ID: {book.book_id}")
 
     parent = {"database_id": database_id, "type": "database_id"}
     properties = {
-        "BookName": {"title": [{"type": "text", "text": {"content": bookName}}]},
-        "BookId": {"rich_text": [{"type": "text", "text": {"content": bookId}}]},
+        "BookName": {"title": [{"type": "text", "text": {"content": book.title}}]},
+        "book_id": {"rich_text": [{"type": "text", "text": {"content": book.book_id}}]},
         "ISBN": {"rich_text": [{"type": "text", "text": {"content": isbn}}]},
         "URL": {
-            "url": f"https://weread.qq.com/web/reader/{calculate_book_str_id(bookId)}"
+            "url": f"https://weread.qq.com/web/reader/{calculate_book_str_id(book.book_id)}"
         },
-        "Author": {"rich_text": [{"type": "text", "text": {"content": author}}]},
-        "Sort": {"number": sort},
+        "Author": {"rich_text": [{"type": "text", "text": {"content": book.author}}]},
+        "Sort": {"number": book.sort},
         "Rating": {"number": rating},
         "Cover": {
-            "files": [{"type": "external", "name": "Cover", "external": {"url": cover}}]
+            "files": [
+                {"type": "external", "name": "Cover", "external": {"url": book.cover}}
+            ]
         },
     }
-    read_info = get_read_info(session, bookId=bookId)
+    read_info = get_read_info(session, book_id=book.book_id)
     if read_info is not None:
         markedStatus = read_info.get("markedStatus", 0)
         readingTime = read_info.get("readingTime", 0)
@@ -79,7 +77,7 @@ def insert_to_notion(
                 }
             }
 
-    icon = {"type": "external", "external": {"url": cover}}
+    icon = {"type": "external", "external": {"url": book.cover}}
     # notion api 限制100个block
     response = client.pages.create(parent=parent, icon=icon, properties=properties)
     id = response["id"]

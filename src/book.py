@@ -17,6 +17,7 @@ from util import get_callout_block
 class Book:
     def __init__(self, book_id: str, title: str, author: str, cover: str, sort: int):
         self.book_id = book_id
+
         self.title = title
         self.author = author
         self.cover = cover
@@ -25,6 +26,51 @@ class Book:
         self.bookmark_list = []
         self.summary = []
         self.reviews = []
+        self.chapter_info = {}
+
+    def set_summary(self, session: requests.Session):
+        params = dict(book_id=self.book_id, listType=11, mine=1, syncKey=0)
+        r = session.get(WEREAD_REVIEW_LIST_URL, params=params)
+        reviews = r.json().get("reviews")
+        self.summary = list(filter(lambda x: x.get("review").get("type") == 4, reviews))
+        self.reviews = list(filter(lambda x: x.get("review").get("type") == 1, reviews))
+        self.reviews = list(map(lambda x: x.get("review"), self.reviews))
+        self.reviews = list(
+            map(lambda x: {**x, "markText": x.pop("content")}, self.reviews)
+        )
+
+    def set_bookmark_list(self, session: requests.Session):
+        params = dict(book_id=self.book_id)
+        r = session.get(WEREAD_BOOKMARKLIST_URL, params=params)
+
+        if r.ok:
+            updated = r.json().get("updated")
+            logger.info(f"Updated bookmark list: {updated}")
+
+            updated = sorted(
+                updated,
+                key=lambda x: (
+                    x.get("chapterUid", 1),
+                    int(x.get("range").split("-")[0]),
+                ),
+            )
+            self.bookmark_list = r.json()["updated"]
+        else:
+            self.bookmark_list = None
+
+    def set_chapter_info(self, session: requests.Session):
+        body = {"book_ids": [self.book_id], "synckeys": [0], "teenmode": 0}
+        r = session.post(WEREAD_CHAPTER_INFO, json=body)
+        if (
+            r.ok
+            and "data" in r.json()
+            and len(r.json()["data"]) == 1
+            and "updated" in r.json()["data"][0]
+        ):
+            update = r.json()["data"][0]["updated"]
+            self.chapter_info = {item["chapterUid"]: item for item in update}
+        else:
+            self.chapter_info = None
 
 
 def get_bookmark_list(session: requests.Session, book_id: str) -> Optional[List[Dict]]:

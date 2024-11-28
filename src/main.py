@@ -77,11 +77,7 @@ if __name__ == "__main__":
         id = insert_to_notion(
             client,
             database_id,
-            title,
-            bookId,
-            cover,
-            sort,
-            author,
+            book,
             isbn,
             rating,
             session,
