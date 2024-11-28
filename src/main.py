@@ -6,7 +6,6 @@ from notion_client import Client
 
 from book import (
     Book,
-    get_bookinfo,
     get_bookmark_list,
     get_chapter_info,
     get_children,
