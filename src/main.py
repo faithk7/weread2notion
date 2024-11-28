@@ -40,23 +40,24 @@ if __name__ == "__main__":
 
     assert books is not None, "获取书架和笔记失败"
 
-    for book in books:
+    for book_json in books:
         # TODO: have a book object defined
-        sort = book["sort"]
+        sort = book_json.get("sort")
         if sort <= latest_sort:
             continue
-        book = book.get("book")
-        title = book.get("title")
-        cover = book.get("cover")
-        bookId = book.get("bookId")
-        author = book.get("author")
 
-        book = Book(bookId, title, author, cover, sort)
+        book = Book(
+            book_json.get("bookId"),
+            book_json.get("title"),
+            book_json.get("author"),
+            book_json.get("cover"),
+            book_json.get("sort"),
+        )
 
-        check(client, database_id, bookId)
-        chapter = get_chapter_info(session, bookId)
-        bookmark_list = get_bookmark_list(session, bookId)
-        summary, reviews = get_review_list(session, bookId)
+        check(client, database_id, book.book_id)
+        chapter = get_chapter_info(session, book.book_id)
+        bookmark_list = get_bookmark_list(session, book.book_id)
+        summary, reviews = get_review_list(session, book.book_id)
         bookmark_list.extend(reviews)
 
         bookmark_list = sorted(
@@ -70,7 +71,7 @@ if __name__ == "__main__":
                 ),
             ),
         )
-        isbn, rating = get_bookinfo(session, bookId)
+        book.set_bookinfo(session)
 
         children, grandchild = get_children(chapter, summary, bookmark_list)
         # TODO: have a NotionDBManager object
@@ -78,8 +79,6 @@ if __name__ == "__main__":
             client,
             database_id,
             book,
-            isbn,
-            rating,
             session,
         )
         results = add_children(client, id, children)

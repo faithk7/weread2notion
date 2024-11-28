@@ -23,10 +23,21 @@ class Book:
         self.cover = cover
         self.sort = sort
 
+        self.isbn = ""
+        self.rating = 0.0
+
         self.bookmark_list = []
         self.summary = []
         self.reviews = []
         self.chapter_info = {}
+
+    def set_bookinfo(self, session: requests.Session):
+        params = dict(book_id=self.book_id)
+        r = session.get(WEREAD_BOOK_INFO, params=params)
+        if r.ok:
+            data = r.json()
+            self.isbn = data["isbn"]
+            self.rating = data["newRating"] / 1000
 
     def set_summary(self, session: requests.Session):
         params = dict(book_id=self.book_id, listType=11, mine=1, syncKey=0)

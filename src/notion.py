@@ -24,8 +24,6 @@ def insert_to_notion(
     client: Client,
     database_id: str,
     book: Book,
-    isbn: str,
-    rating: float,
     session: requests.Session,
 ) -> str:
     """插入到notion"""
@@ -37,13 +35,13 @@ def insert_to_notion(
     properties = {
         "BookName": {"title": [{"type": "text", "text": {"content": book.title}}]},
         "book_id": {"rich_text": [{"type": "text", "text": {"content": book.book_id}}]},
-        "ISBN": {"rich_text": [{"type": "text", "text": {"content": isbn}}]},
+        "ISBN": {"rich_text": [{"type": "text", "text": {"content": book.isbn}}]},
         "URL": {
             "url": f"https://weread.qq.com/web/reader/{calculate_book_str_id(book.book_id)}"
         },
         "Author": {"rich_text": [{"type": "text", "text": {"content": book.author}}]},
         "Sort": {"number": book.sort},
-        "Rating": {"number": rating},
+        "Rating": {"number": book.rating},
         "Cover": {
             "files": [
                 {"type": "external", "name": "Cover", "external": {"url": book.cover}}
