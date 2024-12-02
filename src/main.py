@@ -13,7 +13,7 @@ from book import (
     get_review_list,
 )
 from constants import WEREAD_URL
-from notion import add_children, add_grandchild, check, get_sort, insert_to_notion
+from notion import NotionManager
 from util import parse_cookie_string
 
 if __name__ == "__main__":
@@ -28,12 +28,14 @@ if __name__ == "__main__":
     database_id = options.database_id
     notion_token = options.notion_token
 
+    notion_manager = NotionManager(notion_token, database_id)
+
     session = requests.Session()
     session.cookies = parse_cookie_string(weread_cookie)
     client = Client(auth=notion_token, log_level=logging.ERROR)
     session.get(WEREAD_URL)
 
-    latest_sort = get_sort(client, database_id)
+    latest_sort = notion_manager.get_sort()
     # NOTE: this is the starting point of getting all books
     books = get_notebooklist(session)
 
@@ -53,7 +55,7 @@ if __name__ == "__main__":
             book_json.get("sort"),
         )
 
-        check(client, database_id, book.book_id)
+        notion_manager.check_and_delete(book.book_id)
         chapter = get_chapter_info(session, book.book_id)
         bookmark_list = get_bookmark_list(session, book.book_id)
         summary, reviews = get_review_list(session, book.book_id)
@@ -74,12 +76,7 @@ if __name__ == "__main__":
 
         children, grandchild = get_children(chapter, summary, bookmark_list)
         # TODO: have a NotionDBManager object
-        id = insert_to_notion(
-            client,
-            database_id,
-            book,
-            session,
-        )
-        results = add_children(client, id, children)
+        id = notion_manager.insert_to_notion(book)
+        results = notion_manager.add_children(id, children)
         if len(grandchild) > 0 and results is not None:
-            add_grandchild(client, grandchild, results)
+            notion_manager.add_grandchild(grandchild, results)
