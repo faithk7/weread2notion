@@ -42,7 +42,6 @@ if __name__ == "__main__":
     assert books is not None, "获取书架和笔记失败"
 
     for book_json in books:
-        # TODO: have a book object defined
         sort = book_json.get("sort")
         if sort <= latest_sort:
             continue
@@ -75,8 +74,7 @@ if __name__ == "__main__":
         book.set_bookinfo(session)
 
         children, grandchild = get_children(chapter, summary, bookmark_list)
-        # TODO: have a NotionDBManager object
-        id = notion_manager.insert_to_notion(book)
+        id = notion_manager.insert_to_notion(book, session)
         results = notion_manager.add_children(id, children)
         if len(grandchild) > 0 and results is not None:
             notion_manager.add_grandchild(grandchild, results)
