@@ -32,8 +32,7 @@ class Book:
         self.chapters = {}
 
     def set_bookinfo(self, session: requests.Session):
-        params = dict(book_id=self.book_id)
-        r = session.get(WEREAD_BOOK_INFO, params=params)
+        r = session.get(WEREAD_BOOK_INFO, params={"book_id": self.book_id})
         if r.ok:
             data = r.json()
             self.isbn = data["isbn"]
