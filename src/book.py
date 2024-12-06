@@ -29,7 +29,7 @@ class Book:
         self.bookmark_list = []
         self.summary = []
         self.reviews = []
-        self.chapter_info = {}
+        self.chapters = {}
 
     def set_bookinfo(self, session: requests.Session):
         params = dict(book_id=self.book_id)
@@ -43,6 +43,7 @@ class Book:
         params = dict(book_id=self.book_id, listType=11, mine=1, syncKey=0)
         r = session.get(WEREAD_REVIEW_LIST_URL, params=params)
         reviews = r.json().get("reviews")
+
         self.summary = list(filter(lambda x: x.get("review").get("type") == 4, reviews))
         self.reviews = list(filter(lambda x: x.get("review").get("type") == 1, reviews))
         self.reviews = list(map(lambda x: x.get("review"), self.reviews))
@@ -69,19 +70,16 @@ class Book:
         else:
             self.bookmark_list = None
 
-    def set_chapter_info(self, session: requests.Session):
+    def set_chapters(self, session: requests.Session):
         body = {"book_ids": [self.book_id], "synckeys": [0], "teenmode": 0}
         r = session.post(WEREAD_CHAPTER_INFO, json=body)
-        if (
-            r.ok
-            and "data" in r.json()
-            and len(r.json()["data"]) == 1
-            and "updated" in r.json()["data"][0]
-        ):
-            update = r.json()["data"][0]["updated"]
-            self.chapter_info = {item["chapterUid"]: item for item in update}
-        else:
-            self.chapter_info = None
+        if r.ok:
+            data = r.json().get("data", [])
+            if len(data) == 1 and "updated" in data[0]:
+                update = data[0]["updated"]
+                self.chapters = {item["chapterUid"]: item for item in update}
+                return
+        self.chapters = None
 
 
 def get_bookmark_list(session: requests.Session, book_id: str) -> Optional[List[Dict]]:
