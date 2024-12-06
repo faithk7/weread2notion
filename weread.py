@@ -267,7 +267,7 @@ def get_notebooklist():
     return None
 
 
-def get_sort():
+def get_latest_sort():
     """获取database中的最新时间"""
     filter = {"property": "Sort", "number": {"is_not_empty": True}}
     sorts = [
@@ -396,7 +396,7 @@ if __name__ == "__main__":
     session.cookies = parse_cookie_string(weread_cookie)
     client = Client(auth=notion_token, log_level=logging.ERROR)
     session.get(WEREAD_URL)
-    latest_sort = get_sort()
+    latest_sort = get_latest_sort()
     books = get_notebooklist()
     if books != None:
         for book in books:

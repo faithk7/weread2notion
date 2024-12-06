@@ -35,7 +35,7 @@ if __name__ == "__main__":
     client = Client(auth=notion_token, log_level=logging.ERROR)
     session.get(WEREAD_URL)
 
-    latest_sort = notion_manager.get_sort()
+    latest_sort = notion_manager.get_latest_sort()
     # NOTE: this is the starting point of getting all books
     books = get_notebooklist(session)
 

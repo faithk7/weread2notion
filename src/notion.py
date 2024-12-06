@@ -110,7 +110,7 @@ class NotionManager:
             id = results[key].get("id")
             self.client.blocks.children.append(block_id=id, children=[value])
 
-    def get_sort(self) -> int:
+    def get_latest_sort(self) -> int:
         """获取database中的最新时间"""
         filter = {"property": "Sort", "number": {"is_not_empty": True}}
         sorts = [
