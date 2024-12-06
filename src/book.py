@@ -32,17 +32,33 @@ class Book:
         self.chapters = {}
 
     def set_bookinfo(self, session: requests.Session):
+        data = self._fetch_book_info(session)
+        if data:
+            self._update_book_info(data)
+
+    def _fetch_book_info(self, session: requests.Session) -> Optional[Dict]:
         r = session.get(WEREAD_BOOK_INFO, params={"book_id": self.book_id})
         if r.ok:
-            data = r.json()
-            self.isbn = data["isbn"]
-            self.rating = data["newRating"] / 1000
+            return r.json()
+        return None
+
+    def _update_book_info(self, data: Dict):
+        self.isbn = data["isbn"]
+        self.rating = data["newRating"] / 1000
 
     def set_summary(self, session: requests.Session):
+        reviews = self._fetch_reviews(session)
+        if reviews:
+            self._process_reviews(reviews)
+
+    def _fetch_reviews(self, session: requests.Session) -> Optional[List[Dict]]:
         params = dict(book_id=self.book_id, listType=11, mine=1, syncKey=0)
         r = session.get(WEREAD_REVIEW_LIST_URL, params=params)
-        reviews = r.json().get("reviews")
+        if r.ok:
+            return r.json().get("reviews")
+        return None
 
+    def _process_reviews(self, reviews: List[Dict]):
         self.summary = list(filter(lambda x: x.get("review").get("type") == 4, reviews))
         self.reviews = list(filter(lambda x: x.get("review").get("type") == 1, reviews))
         self.reviews = list(map(lambda x: x.get("review"), self.reviews))
@@ -51,34 +67,47 @@ class Book:
         )
 
     def set_bookmark_list(self, session: requests.Session):
-        params = dict(book_id=self.book_id)
-        r = session.get(WEREAD_BOOKMARKLIST_URL, params=params)
-
-        if r.ok:
-            updated = r.json().get("updated")
-            logger.info(f"Updated bookmark list: {updated}")
-
-            updated = sorted(
-                updated,
-                key=lambda x: (
-                    x.get("chapterUid", 1),
-                    int(x.get("range").split("-")[0]),
-                ),
-            )
-            self.bookmark_list = r.json()["updated"]
+        updated = self._fetch_bookmark_list(session)
+        if updated is not None:
+            self._update_bookmark_list(updated)
         else:
             self.bookmark_list = None
 
+    def _fetch_bookmark_list(self, session: requests.Session) -> Optional[List[Dict]]:
+        params = dict(book_id=self.book_id)
+        r = session.get(WEREAD_BOOKMARKLIST_URL, params=params)
+        if r.ok:
+            return r.json().get("updated")
+        return None
+
+    def _update_bookmark_list(self, updated: List[Dict]):
+        logger.info(f"Updated bookmark list: {updated}")
+        self.bookmark_list = sorted(
+            updated,
+            key=lambda x: (
+                x.get("chapterUid", 1),
+                int(x.get("range").split("-")[0]),
+            ),
+        )
+
     def set_chapters(self, session: requests.Session):
+        data = self._fetch_chapter_info(session)
+        if data:
+            self._update_chapters(data)
+        else:
+            self.chapters = None
+
+    def _fetch_chapter_info(self, session: requests.Session) -> Optional[List[Dict]]:
         body = {"book_ids": [self.book_id], "synckeys": [0], "teenmode": 0}
         r = session.post(WEREAD_CHAPTER_INFO, json=body)
         if r.ok:
-            data = r.json().get("data", [])
-            if len(data) == 1 and "updated" in data[0]:
-                update = data[0]["updated"]
-                self.chapters = {item["chapterUid"]: item for item in update}
-                return
-        self.chapters = None
+            return r.json().get("data", [])
+        return None
+
+    def _update_chapters(self, data: List[Dict]):
+        if len(data) == 1 and "updated" in data[0]:
+            update = data[0]["updated"]
+            self.chapters = {item["chapterUid"]: item for item in update}
 
 
 def get_bookmark_list(session: requests.Session, book_id: str) -> Optional[List[Dict]]:
