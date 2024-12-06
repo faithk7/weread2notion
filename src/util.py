@@ -96,3 +96,15 @@ def get_callout_block(content: str, style: int, colorStyle: int, reviewId: str) 
             "color": color,
         },
     }
+
+
+def format_reading_time(reading_time: int) -> str:
+    """Format reading time from seconds to a string with hours and minutes."""
+    format_time = ""
+    hour = reading_time // 3600
+    if hour > 0:
+        format_time += f"{hour}时"
+    minutes = reading_time % 3600 // 60
+    if minutes > 0:
+        format_time += f"{minutes}分"
+    return format_time

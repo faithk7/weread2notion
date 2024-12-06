@@ -7,7 +7,7 @@ from notion_client import Client
 
 from book import Book, get_read_info
 from logger import logger
-from util import calculate_book_str_id
+from util import calculate_book_str_id, format_reading_time
 
 
 class NotionManager:
@@ -61,13 +61,7 @@ class NotionManager:
         if read_info is not None:
             markedStatus = read_info.get("markedStatus", 0)
             readingTime = read_info.get("readingTime", 0)
-            format_time = ""
-            hour = readingTime // 3600
-            if hour > 0:
-                format_time += f"{hour}时"
-            minutes = readingTime % 3600 // 60
-            if minutes > 0:
-                format_time += f"{minutes}分"
+            format_time = format_reading_time(readingTime)
             properties["Status"] = {
                 "select": {"name": "读完" if markedStatus == 4 else "在读"}
             }
