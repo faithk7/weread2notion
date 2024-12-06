@@ -15,6 +15,7 @@ class NotionManager:
         self.client = Client(auth=notion_token)
         self.database_id = database_id
 
+    # TODO: can we just update the book instead of deleting and inserting?
     def check_and_delete(self, book_id: str) -> None:
         """检查是否已经插入过 如果已经插入了就删除"""
         time.sleep(1)
