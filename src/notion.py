@@ -16,10 +16,13 @@ class NotionManager:
         self.database_id = database_id
 
     # TODO: can we just update the book instead of deleting and inserting?
-    def check_and_delete(self, book_id: str) -> None:
+    def check_and_delete(self, bookId: str) -> None:
         """检查是否已经插入过 如果已经插入了就删除"""
         time.sleep(1)
-        filter = {"property": "book_id", "rich_text": {"equals": book_id}}
+        filter = {"property": "BookId", "rich_text": {"equals": bookId}}
+        logger.info(
+            f"Database info: {self.client.databases.retrieve(self.database_id)}"
+        )
         response = self.client.databases.query(
             database_id=self.database_id, filter=filter
         )
@@ -31,17 +34,17 @@ class NotionManager:
         """插入到notion"""
         time.sleep(1)
 
-        logger.info(f"Inserting book: {book.title} with ID: {book.book_id}")
+        logger.info(f"Inserting book: {book.title} with ID: {book.bookId}")
 
         parent = {"database_id": self.database_id, "type": "database_id"}
         properties = {
             "BookName": {"title": [{"type": "text", "text": {"content": book.title}}]},
-            "book_id": {
-                "rich_text": [{"type": "text", "text": {"content": book.book_id}}]
+            "BookId": {
+                "rich_text": [{"type": "text", "text": {"content": book.bookId}}]
             },
             "ISBN": {"rich_text": [{"type": "text", "text": {"content": book.isbn}}]},
             "URL": {
-                "url": f"https://weread.qq.com/web/reader/{calculate_book_str_id(book.book_id)}"
+                "url": f"https://weread.qq.com/web/reader/{calculate_book_str_id(book.bookId)}"
             },
             "Author": {
                 "rich_text": [{"type": "text", "text": {"content": book.author}}]
@@ -58,7 +61,7 @@ class NotionManager:
                 ]
             },
         }
-        read_info = get_read_info(session, book_id=book.book_id)
+        read_info = get_read_info(session, bookId=book.bookId)
         if read_info is not None:
             markedStatus = read_info.get("markedStatus", 0)
             readingTime = read_info.get("readingTime", 0)

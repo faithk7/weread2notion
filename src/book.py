@@ -15,8 +15,8 @@ from util import get_callout_block
 
 
 class Book:
-    def __init__(self, book_id: str, title: str, author: str, cover: str, sort: int):
-        self.book_id = book_id
+    def __init__(self, bookId: str, title: str, author: str, cover: str, sort: int):
+        self.bookId = bookId
 
         self.title = title
         self.author = author
@@ -37,7 +37,7 @@ class Book:
             self._update_book_info(data)
 
     def _fetch_book_info(self, session: requests.Session) -> Optional[Dict]:
-        r = session.get(WEREAD_BOOK_INFO, params={"book_id": self.book_id})
+        r = session.get(WEREAD_BOOK_INFO, params={"bookId": self.bookId})
         if r.ok:
             return r.json()
         return None
@@ -52,7 +52,7 @@ class Book:
             self._process_reviews(reviews)
 
     def _fetch_reviews(self, session: requests.Session) -> Optional[List[Dict]]:
-        params = dict(book_id=self.book_id, listType=11, mine=1, syncKey=0)
+        params = dict(bookId=self.bookId, listType=11, mine=1, syncKey=0)
         r = session.get(WEREAD_REVIEW_LIST_URL, params=params)
         if r.ok:
             return r.json().get("reviews")
@@ -74,7 +74,7 @@ class Book:
             self.bookmark_list = None
 
     def _fetch_bookmark_list(self, session: requests.Session) -> Optional[List[Dict]]:
-        params = dict(book_id=self.book_id)
+        params = dict(bookId=self.bookId)
         r = session.get(WEREAD_BOOKMARKLIST_URL, params=params)
         if r.ok:
             return r.json().get("updated")
@@ -98,7 +98,7 @@ class Book:
             self.chapters = None
 
     def _fetch_chapter_info(self, session: requests.Session) -> Optional[List[Dict]]:
-        body = {"book_ids": [self.book_id], "synckeys": [0], "teenmode": 0}
+        body = {"bookIds": [self.bookId], "synckeys": [0], "teenmode": 0}
         r = session.post(WEREAD_CHAPTER_INFO, json=body)
         if r.ok:
             return r.json().get("data", [])
@@ -110,13 +110,13 @@ class Book:
             self.chapters = {item["chapterUid"]: item for item in update}
 
 
-def get_bookmark_list(session: requests.Session, book_id: str) -> Optional[List[Dict]]:
+def get_bookmark_list(session: requests.Session, bookId: str) -> Optional[List[Dict]]:
     """获取我的划线
     Returns:
         List[Dict]: 本书的划线列表
     """
 
-    params = dict(book_id=book_id)
+    params = dict(bookId=bookId)
     r = session.get(WEREAD_BOOKMARKLIST_URL, params=params)
 
     if r.ok:
@@ -131,17 +131,17 @@ def get_bookmark_list(session: requests.Session, book_id: str) -> Optional[List[
     return None
 
 
-def get_read_info(session: requests.Session, book_id: str) -> Optional[Dict]:
-    params = dict(book_id=book_id, readingDetail=1, readingBookIndex=1, finishedDate=1)
+def get_read_info(session: requests.Session, bookId: str) -> Optional[Dict]:
+    params = dict(bookId=bookId, readingDetail=1, readingBookIndex=1, finishedDate=1)
     r = session.get(WEREAD_READ_INFO_URL, params=params)
     if r.ok:
         return r.json()
     return None
 
 
-def get_bookinfo(session: requests.Session, book_id: str) -> Tuple[str, float]:
+def get_bookinfo(session: requests.Session, bookId: str) -> Tuple[str, float]:
     """获取书的详情"""
-    params = dict(book_id=book_id)
+    params = dict(bookId=bookId)
     r = session.get(WEREAD_BOOK_INFO, params=params)
     isbn = ""
     newRating = 0.0
@@ -168,10 +168,10 @@ def get_notebooklist(session: requests.Session) -> Optional[List[Dict]]:
 
 
 def get_chapter_info(
-    session: requests.Session, book_id: str
+    session: requests.Session, bookId: str
 ) -> Optional[Dict[int, Dict]]:
     """获取章节信息"""
-    body = {"book_ids": [book_id], "synckeys": [0], "teenmode": 0}
+    body = {"bookIds": [bookId], "synckeys": [0], "teenmode": 0}
     r = session.post(WEREAD_CHAPTER_INFO, json=body)
     if (
         r.ok
@@ -185,10 +185,10 @@ def get_chapter_info(
 
 
 def get_review_list(
-    session: requests.Session, book_id: str
+    session: requests.Session, bookId: str
 ) -> Tuple[List[Dict], List[Dict]]:
     """获取笔记"""
-    params = dict(book_id=book_id, listType=11, mine=1, syncKey=0)
+    params = dict(bookId=bookId, listType=11, mine=1, syncKey=0)
     r = session.get(WEREAD_REVIEW_LIST_URL, params=params)
     reviews = r.json().get("reviews")
     summary = list(filter(lambda x: x.get("review").get("type") == 4, reviews))

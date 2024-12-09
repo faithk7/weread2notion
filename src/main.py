@@ -13,6 +13,7 @@ from book import (
     get_review_list,
 )
 from constants import WEREAD_URL
+from logger import logger
 from notion import NotionManager
 from util import parse_cookie_string
 
@@ -42,10 +43,11 @@ if __name__ == "__main__":
     assert books is not None, "获取书架和笔记失败"
 
     for book_json in books:
+        logger.info(f"Current book json: {book_json}")
         sort = book_json.get("sort")
         if sort <= latest_sort:
             continue
-
+        book_json = book_json["book"]
         book = Book(
             book_json.get("bookId"),
             book_json.get("title"),
@@ -54,10 +56,10 @@ if __name__ == "__main__":
             book_json.get("sort"),
         )
 
-        notion_manager.check_and_delete(book.book_id)
-        chapter = get_chapter_info(session, book.book_id)
-        bookmark_list = get_bookmark_list(session, book.book_id)
-        summary, reviews = get_review_list(session, book.book_id)
+        notion_manager.check_and_delete(book.bookId)
+        chapter = get_chapter_info(session, book.bookId)
+        bookmark_list = get_bookmark_list(session, book.bookId)
+        summary, reviews = get_review_list(session, book.bookId)
         bookmark_list.extend(reviews)
 
         bookmark_list = sorted(
@@ -74,6 +76,9 @@ if __name__ == "__main__":
         book.set_bookinfo(session)
 
         children, grandchild = get_children(chapter, summary, bookmark_list)
+        logger.info(
+            f"Current book: {book.bookId} - {book.title} - {book.isbn} - bookmark_list: {bookmark_list}"
+        )
         id = notion_manager.insert_to_notion(book, session)
         results = notion_manager.add_children(id, children)
         if len(grandchild) > 0 and results is not None:
