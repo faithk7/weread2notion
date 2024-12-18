@@ -17,17 +17,17 @@ from logger import logger
 from notion import NotionManager
 from util import parse_cookie_string
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("weread_cookie")
-    parser.add_argument("notion_token")
-    parser.add_argument("database_id")
-    # TODO: add a arg parse method in the util.py
-    options = parser.parse_args()
 
-    weread_cookie = options.weread_cookie
-    database_id = options.database_id
-    notion_token = options.notion_token
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    for arg in ["weread_cookie", "notion_token", "database_id"]:
+        parser.add_argument(arg)
+    options = parser.parse_args()
+    return options.weread_cookie, options.notion_token, options.database_id
+
+
+if __name__ == "__main__":
+    weread_cookie, notion_token, database_id = parse_arguments()
 
     notion_manager = NotionManager(notion_token, database_id)
     latest_sort = notion_manager.get_latest_sort()
