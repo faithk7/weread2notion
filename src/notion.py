@@ -15,28 +15,66 @@ class NotionManager:
         self.client = Client(auth=notion_token)
         self.database_id = database_id
 
-    # TODO: can we just update the book instead of deleting and inserting?
     def check_and_delete(self, bookId: str) -> None:
         """检查是否已经插入过 如果已经插入了就删除"""
         time.sleep(1)
-        filter = {"property": "BookId", "rich_text": {"equals": bookId}}
+        filter = self._create_filter("BookId", bookId)
         logger.info(
             f"Database info: {self.client.databases.retrieve(self.database_id)}"
         )
         response = self.client.databases.query(
             database_id=self.database_id, filter=filter
         )
-        for result in response["results"]:
-            time.sleep(1)
-            self.client.blocks.delete(block_id=result["id"])
+        self._delete_existing_entries(response)
 
     def insert_to_notion(self, book: Book, session: requests.Session) -> str:
         """插入到notion"""
         time.sleep(1)
-
         logger.info(f"Inserting book: {book.title} with ID: {book.bookId}")
 
         parent = {"database_id": self.database_id, "type": "database_id"}
+        properties = self._create_properties(book, session)
+        icon = {"type": "external", "external": {"url": book.cover}}
+
+        response = self.client.pages.create(
+            parent=parent, icon=icon, properties=properties
+        )
+        return response["id"]
+
+    def add_children(self, id: str, children: List[Dict]) -> Optional[List[Dict]]:
+        results = []
+        for i in range(0, len(children) // 100 + 1):
+            time.sleep(1)  # NOTE: TEMP FIX
+            response = self.client.blocks.children.append(
+                block_id=id, children=children[i * 100 : (i + 1) * 100]
+            )
+            results.extend(response.get("results"))
+        return results if len(results) == len(children) else None
+
+    def add_grandchild(self, grandchild: Dict[int, Dict], results: List[Dict]) -> None:
+        for key, value in grandchild.items():
+            time.sleep(1)
+            id = results[key].get("id")
+            self.client.blocks.children.append(block_id=id, children=[value])
+
+    def get_latest_sort(self) -> int:
+        """获取database中的最新时间"""
+        filter = {"property": "Sort", "number": {"is_not_empty": True}}
+        sorts = [{"property": "Sort", "direction": "descending"}]
+        response = self.client.databases.query(
+            database_id=self.database_id, filter=filter, sorts=sorts, page_size=1
+        )
+        return self._extract_latest_sort(response)
+
+    def _create_filter(self, property_name: str, value: str) -> Dict:
+        return {"property": property_name, "rich_text": {"equals": value}}
+
+    def _delete_existing_entries(self, response: Dict) -> None:
+        for result in response["results"]:
+            time.sleep(1)
+            self.client.blocks.delete(block_id=result["id"])
+
+    def _create_properties(self, book: Book, session: requests.Session) -> Dict:
         properties = {
             "BookName": {"title": [{"type": "text", "text": {"content": book.title}}]},
             "BookId": {
@@ -63,63 +101,30 @@ class NotionManager:
         }
         read_info = get_read_info(session, bookId=book.bookId)
         if read_info is not None:
-            markedStatus = read_info.get("markedStatus", 0)
-            readingTime = read_info.get("readingTime", 0)
-            format_time = format_reading_time(readingTime)
-            properties["Status"] = {
-                "select": {"name": "读完" if markedStatus == 4 else "在读"}
-            }
-            properties["ReadingTime"] = {
-                "rich_text": [{"type": "text", "text": {"content": format_time}}]
-            }
-            if "finishedDate" in read_info:
-                properties["Date"] = {
-                    "date": {
-                        "start": datetime.utcfromtimestamp(
-                            read_info.get("finishedDate")
-                        ).strftime("%Y-%m-%d %H:%M:%S"),
-                        "time_zone": "Asia/Shanghai",
-                    }
+            self._add_read_info_to_properties(properties, read_info)
+        return properties
+
+    def _add_read_info_to_properties(self, properties: Dict, read_info: Dict) -> None:
+        markedStatus = read_info.get("markedStatus", 0)
+        readingTime = read_info.get("readingTime", 0)
+        format_time = format_reading_time(readingTime)
+        properties["Status"] = {
+            "select": {"name": "读完" if markedStatus == 4 else "在读"}
+        }
+        properties["ReadingTime"] = {
+            "rich_text": [{"type": "text", "text": {"content": format_time}}]
+        }
+        if "finishedDate" in read_info:
+            properties["Date"] = {
+                "date": {
+                    "start": datetime.utcfromtimestamp(
+                        read_info.get("finishedDate")
+                    ).strftime("%Y-%m-%d %H:%M:%S"),
+                    "time_zone": "Asia/Shanghai",
                 }
-
-        icon = {"type": "external", "external": {"url": book.cover}}
-        # notion api 限制100个block
-        response = self.client.pages.create(
-            parent=parent, icon=icon, properties=properties
-        )
-        id = response["id"]
-        return id
-
-    def add_children(self, id: str, children: List[Dict]) -> Optional[List[Dict]]:
-        results = []
-
-        for i in range(0, len(children) // 100 + 1):
-            time.sleep(1)  # NOTE: TEMP FIX
-            response = self.client.blocks.children.append(
-                block_id=id, children=children[i * 100 : (i + 1) * 100]
-            )
-            results.extend(response.get("results"))
-
-        return results if len(results) == len(children) else None
-
-    def add_grandchild(self, grandchild: Dict[int, Dict], results: List[Dict]) -> None:
-        for key, value in grandchild.items():
-            time.sleep(1)
-            id = results[key].get("id")
-            self.client.blocks.children.append(block_id=id, children=[value])
-
-    def get_latest_sort(self) -> int:
-        """获取database中的最新时间"""
-        filter = {"property": "Sort", "number": {"is_not_empty": True}}
-        sorts = [
-            {
-                "property": "Sort",
-                "direction": "descending",
             }
-        ]
-        response = self.client.databases.query(
-            database_id=self.database_id, filter=filter, sorts=sorts, page_size=1
-        )
+
+    def _extract_latest_sort(self, response: Dict) -> int:
         if len(response.get("results")) == 1:
             logger.info(
                 f"Latest sort: {response.get('results')[0].get('properties').get('Sort').get('number')}"
@@ -127,5 +132,4 @@ class NotionManager:
             return (
                 response.get("results")[0].get("properties").get("Sort").get("number")
             )
-
         return 0

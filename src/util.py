@@ -9,42 +9,51 @@ from requests.utils import cookiejar_from_dict
 def transform_id(book_id: str) -> Tuple[str, List[str]]:
     id_length = len(book_id)
 
+    # Check if the book_id is purely numeric
     if re.match("^\d*$", book_id):
-        ary = []
+        hex_parts = []
+        # Convert each 9-digit segment to hexadecimal
         for i in range(0, id_length, 9):
-            ary.append(format(int(book_id[i : min(i + 9, id_length)]), "x"))
-        return "3", ary
+            segment = book_id[i : min(i + 9, id_length)]
+            hex_parts.append(format(int(segment), "x"))
+        return "3", hex_parts
 
-    result = ""
-    for i in range(id_length):
-        result += format(ord(book_id[i]), "x")
-    return "4", [result]
+    # Convert each character to its hexadecimal representation
+    hex_result = "".join(format(ord(char), "x") for char in book_id)
+    return "4", [hex_result]
 
 
 def calculate_book_str_id(book_id: str) -> str:
+    # Create an MD5 hash of the book_id
     md5 = hashlib.md5(usedforsecurity=False)
     md5.update(book_id.encode("utf-8"))
     digest = md5.hexdigest()
+
+    # Start the result with the first 3 characters of the digest
     result = digest[0:3]
+
+    # Transform the book_id and append the transformation code and last 2 digest characters
     code, transformed_ids = transform_id(book_id)
     result += code + "2" + digest[-2:]
 
-    for i in range(len(transformed_ids)):
-        hex_length_str = format(len(transformed_ids[i]), "x")
-        if len(hex_length_str) == 1:
-            hex_length_str = "0" + hex_length_str
+    # Append each transformed ID with its length in hexadecimal
+    for transformed_id in transformed_ids:
+        hex_length_str = format(len(transformed_id), "x").zfill(2)
+        result += hex_length_str + transformed_id
 
-        result += hex_length_str + transformed_ids[i]
-
-        if i < len(transformed_ids) - 1:
+        # Add a separator if not the last element
+        if transformed_id != transformed_ids[-1]:
             result += "g"
 
+    # Ensure the result is at least 20 characters long
     if len(result) < 20:
         result += digest[0 : 20 - len(result)]
 
+    # Append the first 3 characters of a new MD5 hash of the result
     md5 = hashlib.md5(usedforsecurity=False)
     md5.update(result.encode("utf-8"))
     result += md5.hexdigest()[0:3]
+
     return result
 
 
