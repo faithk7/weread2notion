@@ -35,7 +35,6 @@ def process_book(
     notion_manager: NotionManager,
     session: requests.Session,
 ) -> None:
-    logger.info(f"Current book json: {book_json}")
     sort = book_json.get("sort")
     if sort <= latest_sort:
         return
