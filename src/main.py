@@ -7,18 +7,12 @@ from typing import Any, Dict, Tuple
 import requests
 from notion_client import Client
 
-from book import (
-    Book,
-    get_bookmark_list,
-    get_chapter_info,
-    get_children,
-    get_notebooklist,
-    get_review_list,
-)
+from book import Book, BookService, get_children, get_notebooklist
 from constants import WEREAD_URL
 from logger import logger
 from notion import NotionManager
 from util import parse_cookie_string
+from weread import WeReadClient
 
 
 def parse_arguments() -> Tuple[str, str, str]:
@@ -33,42 +27,19 @@ def process_book(
     book_json: Dict[str, Any],
     latest_sort: int,
     notion_manager: NotionManager,
-    session: requests.Session,
+    book_service: BookService,
 ) -> None:
     sort = book_json.get("sort")
     if sort <= latest_sort:
         return
-    book_json = book_json["book"]
-    book = Book(
-        book_json.get("bookId"),
-        book_json.get("title"),
-        book_json.get("author"),
-        book_json.get("cover"),
-        book_json.get("sort"),
-    )
+    book = Book.from_json(book_json)
+    book = book_service.load_book_details(book)
 
     notion_manager.check_and_delete(book.bookId)
-    chapter = get_chapter_info(session, book.bookId)
-    bookmark_list = get_bookmark_list(session, book.bookId)
-    summary, reviews = get_review_list(session, book.bookId)
-    bookmark_list.extend(reviews)
 
-    bookmark_list = sorted(
-        bookmark_list,
-        key=lambda x: (
-            x.get("chapterUid", 1),
-            (
-                0
-                if (x.get("range", "") == "" or x.get("range").split("-")[0] == "")
-                else int(x.get("range").split("-")[0])
-            ),
-        ),
-    )
-    book.set_bookinfo(session)
-
-    children, grandchild = get_children(chapter, summary, bookmark_list)
+    children, grandchild = get_children(book.chapters, book.summary, book.bookmark_list)
     logger.info(
-        f"Current book: {book.bookId} - {book.title} - {book.isbn} - bookmark_list: {bookmark_list}"
+        f"Current book: {book.bookId} - {book.title} - {book.isbn} - bookmark_list: {book.bookmark_list}"
     )
     id = notion_manager.insert_to_notion(book, session)
     results = notion_manager.add_children(id, children)
@@ -86,7 +57,9 @@ if __name__ == "__main__":
     session.cookies = parse_cookie_string(weread_cookie)
     session.get(WEREAD_URL)
 
-    client = Client(auth=notion_token, log_level=logging.ERROR)
+    notion_client = Client(auth=notion_token, log_level=logging.ERROR)
+    weread_client = WeReadClient(session)
+    book_service = BookService(weread_client)
 
     # NOTE: this is the starting point of getting all books
     books = get_notebooklist(session)
@@ -101,7 +74,7 @@ if __name__ == "__main__":
                 book_json,
                 latest_sort,
                 notion_manager,
-                session,
+                book_service,
             )
             for book_json in books
         ]

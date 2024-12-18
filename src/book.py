@@ -1,64 +1,44 @@
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 import requests
 
-from constants import (
-    WEREAD_BOOK_INFO,
-    WEREAD_BOOKMARKLIST_URL,
-    WEREAD_CHAPTER_INFO,
-    WEREAD_NOTEBOOKS_URL,
-    WEREAD_READ_INFO_URL,
-    WEREAD_REVIEW_LIST_URL,
-)
+from constants import WEREAD_BOOK_INFO, WEREAD_NOTEBOOKS_URL, WEREAD_READ_INFO_URL
 from logger import logger
 from util import get_callout_block
+from weread import WeReadClient
 
 
+@dataclass
 class Book:
-    def __init__(self, bookId: str, title: str, author: str, cover: str, sort: int):
-        self.bookId = bookId
+    bookId: str
+    title: str
+    author: str
+    cover: str
+    sort: int
+    isbn: str = field(default="")
+    rating: float = field(default=0.0)
+    bookmark_list: List[Dict] = field(default_factory=list)
+    summary: List[Dict] = field(default_factory=list)
+    reviews: List[Dict] = field(default_factory=list)
+    chapters: Dict = field(default_factory=dict)
 
-        self.title = title
-        self.author = author
-        self.cover = cover
-        self.sort = sort
+    @classmethod
+    def from_json(cls, data: dict) -> "Book":
+        book_data = data.get("book", data)  # Handle both nested and flat JSON
+        return cls(
+            bookId=book_data.get("bookId"),
+            title=book_data.get("title"),
+            author=book_data.get("author"),
+            cover=book_data.get("cover"),
+            sort=book_data.get("sort"),
+        )
 
-        self.isbn = ""
-        self.rating = 0.0
-
-        self.bookmark_list = []
-        self.summary = []
-        self.reviews = []
-        self.chapters = {}
-
-    def set_bookinfo(self, session: requests.Session):
-        data = self._fetch_book_info(session)
-        if data:
-            self._update_book_info(data)
-
-    def _fetch_book_info(self, session: requests.Session) -> Optional[Dict]:
-        r = session.get(WEREAD_BOOK_INFO, params={"bookId": self.bookId})
-        if r.ok:
-            return r.json()
-        return None
-
-    def _update_book_info(self, data: Dict):
+    def update_book_info(self, data: Dict):
         self.isbn = data["isbn"]
         self.rating = data["newRating"] / 1000
 
-    def set_summary(self, session: requests.Session):
-        reviews = self._fetch_reviews(session)
-        if reviews:
-            self._process_reviews(reviews)
-
-    def _fetch_reviews(self, session: requests.Session) -> Optional[List[Dict]]:
-        params = dict(bookId=self.bookId, listType=11, mine=1, syncKey=0)
-        r = session.get(WEREAD_REVIEW_LIST_URL, params=params)
-        if r.ok:
-            return r.json().get("reviews")
-        return None
-
-    def _process_reviews(self, reviews: List[Dict]):
+    def process_reviews(self, reviews: List[Dict]):
         self.summary = list(filter(lambda x: x.get("review").get("type") == 4, reviews))
         self.reviews = list(filter(lambda x: x.get("review").get("type") == 1, reviews))
         self.reviews = list(map(lambda x: x.get("review"), self.reviews))
@@ -66,69 +46,46 @@ class Book:
             map(lambda x: {**x, "markText": x.pop("content")}, self.reviews)
         )
 
-    def set_bookmark_list(self, session: requests.Session):
-        updated = self._fetch_bookmark_list(session)
-        if updated is not None:
-            self._update_bookmark_list(updated)
-        else:
-            self.bookmark_list = None
-
-    def _fetch_bookmark_list(self, session: requests.Session) -> Optional[List[Dict]]:
-        params = dict(bookId=self.bookId)
-        r = session.get(WEREAD_BOOKMARKLIST_URL, params=params)
-        if r.ok:
-            return r.json().get("updated")
-        return None
-
-    def _update_bookmark_list(self, updated: List[Dict]):
-        logger.info(f"Updated bookmark list: {updated}")
+    def update_bookmark_list(self, updated: List[Dict]):
         self.bookmark_list = sorted(
             updated,
             key=lambda x: (
                 x.get("chapterUid", 1),
-                int(x.get("range").split("-")[0]),
+                int(
+                    x.get("range", "0-0").split("-")[0]
+                ),  # be defensive, if range is empty, use 0-0
             ),
         )
 
-    def set_chapters(self, session: requests.Session):
-        data = self._fetch_chapter_info(session)
-        if data:
-            self._update_chapters(data)
-        else:
-            self.chapters = None
-
-    def _fetch_chapter_info(self, session: requests.Session) -> Optional[List[Dict]]:
-        body = {"bookIds": [self.bookId], "synckeys": [0], "teenmode": 0}
-        r = session.post(WEREAD_CHAPTER_INFO, json=body)
-        if r.ok:
-            return r.json().get("data", [])
-        return None
-
-    def _update_chapters(self, data: List[Dict]):
+    def update_chapters(self, data: List[Dict]):
         if len(data) == 1 and "updated" in data[0]:
             update = data[0]["updated"]
             self.chapters = {item["chapterUid"]: item for item in update}
 
 
-def get_bookmark_list(session: requests.Session, bookId: str) -> Optional[List[Dict]]:
-    """获取我的划线
-    Returns:
-        List[Dict]: 本书的划线列表
-    """
+class BookService:
+    def __init__(self, client: WeReadClient):
+        self.client = client
 
-    params = dict(bookId=bookId)
-    r = session.get(WEREAD_BOOKMARKLIST_URL, params=params)
+    def load_book_details(self, book: Book) -> Book:
+        """Loads all book details from the API"""
+        # Load book info
+        if info := self.client.fetch_book_info(book.bookId):
+            book.update_book_info(info)
 
-    if r.ok:
-        updated = r.json().get("updated")
-        logger.info(f"Updated bookmark list: {updated}")
+        # Load reviews and summary
+        if reviews := self.client.fetch_reviews(book.bookId):
+            book.process_reviews(reviews)
 
-        updated = sorted(
-            updated,
-            key=lambda x: (x.get("chapterUid", 1), int(x.get("range").split("-")[0])),
-        )
-        return r.json()["updated"]
-    return None
+        # Load bookmarks
+        if bookmarks := self.client.fetch_bookmark_list(book.bookId):
+            book.update_bookmark_list(bookmarks)
+
+        # Load chapters
+        if chapters := self.client.fetch_chapter_info(book.bookId):
+            book.update_chapters(chapters)
+
+        return book
 
 
 def get_read_info(session: requests.Session, bookId: str) -> Optional[Dict]:
@@ -164,37 +121,6 @@ def get_notebooklist(session: requests.Session) -> Optional[List[Dict]]:
     else:
         print(r.text)
     return None
-
-
-def get_chapter_info(
-    session: requests.Session, bookId: str
-) -> Optional[Dict[int, Dict]]:
-    """获取章节信息"""
-    body = {"bookIds": [bookId], "synckeys": [0], "teenmode": 0}
-    r = session.post(WEREAD_CHAPTER_INFO, json=body)
-    if (
-        r.ok
-        and "data" in r.json()
-        and len(r.json()["data"]) == 1
-        and "updated" in r.json()["data"][0]
-    ):
-        update = r.json()["data"][0]["updated"]
-        return {item["chapterUid"]: item for item in update}
-    return None
-
-
-def get_review_list(
-    session: requests.Session, bookId: str
-) -> Tuple[List[Dict], List[Dict]]:
-    """获取笔记"""
-    params = dict(bookId=bookId, listType=11, mine=1, syncKey=0)
-    r = session.get(WEREAD_REVIEW_LIST_URL, params=params)
-    reviews = r.json().get("reviews")
-    summary = list(filter(lambda x: x.get("review").get("type") == 4, reviews))
-    reviews = list(filter(lambda x: x.get("review").get("type") == 1, reviews))
-    reviews = list(map(lambda x: x.get("review"), reviews))
-    reviews = list(map(lambda x: {**x, "markText": x.pop("content")}, reviews))
-    return (summary, reviews)
 
 
 def get_table_of_contents() -> Dict:
