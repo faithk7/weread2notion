@@ -2,6 +2,7 @@ import argparse
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from typing import Any, Dict, Tuple
 
 import requests
 from notion_client import Client
@@ -20,7 +21,7 @@ from notion import NotionManager
 from util import parse_cookie_string
 
 
-def parse_arguments():
+def parse_arguments() -> Tuple[str, str, str]:
     parser = argparse.ArgumentParser()
     for arg in ["weread_cookie", "notion_token", "database_id"]:
         parser.add_argument(arg)
@@ -28,7 +29,12 @@ def parse_arguments():
     return options.weread_cookie, options.notion_token, options.database_id
 
 
-def process_book(book_json, latest_sort, notion_manager, session):
+def process_book(
+    book_json: Dict[str, Any],
+    latest_sort: int,
+    notion_manager: NotionManager,
+    session: requests.Session,
+) -> None:
     logger.info(f"Current book json: {book_json}")
     sort = book_json.get("sort")
     if sort <= latest_sort:
