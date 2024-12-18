@@ -30,13 +30,14 @@ if __name__ == "__main__":
     notion_token = options.notion_token
 
     notion_manager = NotionManager(notion_token, database_id)
+    latest_sort = notion_manager.get_latest_sort()
 
     session = requests.Session()
     session.cookies = parse_cookie_string(weread_cookie)
-    client = Client(auth=notion_token, log_level=logging.ERROR)
     session.get(WEREAD_URL)
 
-    latest_sort = notion_manager.get_latest_sort()
+    client = Client(auth=notion_token, log_level=logging.ERROR)
+
     # NOTE: this is the starting point of getting all books
     books = get_notebooklist(session)
 

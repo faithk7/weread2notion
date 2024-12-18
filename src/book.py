@@ -159,7 +159,6 @@ def get_notebooklist(session: requests.Session) -> Optional[List[Dict]]:
         data = r.json()
         books = data.get("books")
         print("len(books)", len(books))
-        print("books", books[:5])
         books.sort(key=lambda x: x["sort"])
         return books
     else:
