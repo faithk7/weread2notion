@@ -249,60 +249,61 @@ def get_children(
     grandchild = {}
 
     if chapter is not None:
-        # 添加目录
         children.append(get_table_of_contents())
-        d = {}
-        for data in bookmark_list:
-            chapterUid = data.get("chapterUid", 1)
-            if chapterUid not in d:
-                d[chapterUid] = []
-            d[chapterUid].append(data)
+        d = _group_bookmarks_by_chapter(bookmark_list)
 
         for key, value in d.items():
             if key in chapter:
-                # 添加章节
-                children.append(
-                    get_heading(
-                        chapter.get(key).get("level"), chapter.get(key).get("title")
-                    )
-                )
+                children.append(_add_chapter_heading(chapter, key))
 
             for i in value:
-                callout = get_callout_block(
-                    i.get("markText"),
-                    data.get("style"),
-                    i.get("colorStyle"),
-                    i.get("reviewId"),
-                )
+                callout = _create_callout(i)
                 children.append(callout)
 
-                if i.get("abstract") is not None and i.get("abstract") != "":
+                if i.get("abstract"):
                     quote = get_quote(i.get("abstract"))
                     grandchild[len(children) - 1] = quote
-
     else:
-        # 如果没有章节信息 - grandchild 为空
         for data in bookmark_list:
-            children.append(
-                get_callout_block(
-                    data.get("markText"),
-                    data.get("style"),
-                    data.get("colorStyle"),
-                    data.get("reviewId"),
-                )
-            )
+            children.append(_create_callout(data))
 
-    if summary is not None and len(summary) > 0:
+    if summary:
         children.append(get_heading(1, "点评"))
         for i in summary:
-            children.append(
-                get_callout_block(
-                    i.get("review").get("content"),
-                    i.get("style"),
-                    i.get("colorStyle"),
-                    i.get("review").get("reviewId"),
-                )
-            )
+            children.append(_create_summary_callout(i))
+
     logger.info(f"Children: {children}")
     logger.info(f"Grandchild: {grandchild}")
     return children, grandchild
+
+
+def _group_bookmarks_by_chapter(bookmark_list: List[Dict]) -> Dict[int, List[Dict]]:
+    d = {}
+    for data in bookmark_list:
+        chapterUid = data.get("chapterUid", 1)
+        if chapterUid not in d:
+            d[chapterUid] = []
+        d[chapterUid].append(data)
+    return d
+
+
+def _add_chapter_heading(chapter: Dict[int, Dict], key: int) -> Dict:
+    return get_heading(chapter[key].get("level"), chapter[key].get("title"))
+
+
+def _create_callout(data: Dict) -> Dict:
+    return get_callout_block(
+        data.get("markText"),
+        data.get("style"),
+        data.get("colorStyle"),
+        data.get("reviewId"),
+    )
+
+
+def _create_summary_callout(review: Dict) -> Dict:
+    return get_callout_block(
+        review.get("review").get("content"),
+        review.get("style"),
+        review.get("colorStyle"),
+        review.get("review").get("reviewId"),
+    )
