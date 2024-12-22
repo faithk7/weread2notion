@@ -4,14 +4,11 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any, Dict, Tuple
 
-import requests
 from notion_client import Client
 
 from book import Book, BookService, get_children, get_notebooklist
-from constants import WEREAD_URL
 from logger import logger
 from notion import NotionManager
-from util import parse_cookie_string
 from weread import WeReadClient
 
 
