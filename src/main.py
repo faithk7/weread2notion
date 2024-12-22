@@ -37,8 +37,8 @@ def process_book(
     notion_manager: NotionManager,
     book_service: BookService,
 ) -> None:
-    sort = book_json.get("sort")
-    if sort <= latest_sort:
+    current_sort = book_json.get("sort")
+    if current_sort <= latest_sort:
         return
     book = Book.from_json(book_json)
     book = book_service.load_book_details(book)
@@ -61,16 +61,12 @@ if __name__ == "__main__":
     notion_manager = NotionManager(notion_token, database_id)
     latest_sort = notion_manager.get_latest_sort()
 
-    session = requests.Session()
-    session.cookies = parse_cookie_string(weread_cookie)
-    session.get(WEREAD_URL)
-
     notion_client = Client(auth=notion_token, log_level=logging.ERROR)
-    weread_client = WeReadClient(session)
+    weread_client = WeReadClient(weread_cookie)
     book_service = BookService(weread_client)
 
     # NOTE: this is the starting point of getting all books
-    books = get_notebooklist(session)
+    books = get_notebooklist(weread_client.session)
     assert books is not None, "获取书架和笔记失败"
 
     if test_mode:

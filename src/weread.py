@@ -8,12 +8,16 @@ from constants import (
     WEREAD_CHAPTER_INFO,
     WEREAD_READ_INFO_URL,
     WEREAD_REVIEW_LIST_URL,
+    WEREAD_URL,
 )
+from util import parse_cookie_string
 
 
 class WeReadClient:
-    def __init__(self, session: requests.Session):
-        self.session = session
+    def __init__(self, weread_cookie: str):
+        self.session = requests.Session()
+        self.session.cookies = parse_cookie_string(weread_cookie)
+        self.session.get(WEREAD_URL)  # Initialize session
 
     def fetch_book_info(self, book_id: str) -> Optional[Dict]:
         r = self.session.get(WEREAD_BOOK_INFO, params={"bookId": book_id})
