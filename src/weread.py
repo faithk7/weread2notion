@@ -6,6 +6,7 @@ from constants import (
     WEREAD_BOOK_INFO,
     WEREAD_BOOKMARKLIST_URL,
     WEREAD_CHAPTER_INFO,
+    WEREAD_READ_INFO_URL,
     WEREAD_REVIEW_LIST_URL,
 )
 
@@ -32,3 +33,10 @@ class WeReadClient:
         body = {"bookIds": [book_id], "synckeys": [0], "teenmode": 0}
         r = self.session.post(WEREAD_CHAPTER_INFO, json=body)
         return r.json().get("data", []) if r.ok else None
+
+    def fetch_read_info(self, book_id: str) -> Optional[Dict]:
+        params = dict(
+            bookId=book_id, readingDetail=1, readingBookIndex=1, finishedDate=1
+        )
+        r = self.session.get(WEREAD_READ_INFO_URL, params=params)
+        return r.json() if r.ok else None

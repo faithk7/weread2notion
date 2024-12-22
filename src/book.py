@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Tuple
 
 import requests
 
-from constants import WEREAD_NOTEBOOKS_URL, WEREAD_READ_INFO_URL
+from constants import WEREAD_NOTEBOOKS_URL
 from logger import logger
 from util import get_callout_block
 from weread import WeReadClient
@@ -18,6 +18,9 @@ class Book:
     sort: int
     isbn: str = field(default="")
     rating: float = field(default=0.0)
+    status: str = field(default="")
+    reading_time: int = field(default=0)
+    finished_date: Optional[int] = field(default=None)
     bookmark_list: List[Dict] = field(default_factory=list)
     summary: List[Dict] = field(default_factory=list)
     reviews: List[Dict] = field(default_factory=list)
@@ -62,6 +65,13 @@ class Book:
             update = data[0]["updated"]
             self.chapters = {item["chapterUid"]: item for item in update}
 
+    def update_read_info(self, data: Dict):
+        """Updates reading status and time from API data"""
+        marked_status = data.get("markedStatus", 0)
+        self.status = "读完" if marked_status == 4 else "在读"
+        self.reading_time = data.get("readingTime", 0)
+        self.finished_date = data.get("finishedDate")
+
 
 class BookService:
     def __init__(self, client: WeReadClient):
@@ -85,15 +95,11 @@ class BookService:
         if chapters := self.client.fetch_chapter_info(book.bookId):
             book.update_chapters(chapters)
 
+        # Load read info
+        if read_info := self.client.fetch_read_info(book.bookId):
+            book.update_read_info(read_info)
+
         return book
-
-
-def get_read_info(session: requests.Session, bookId: str) -> Optional[Dict]:
-    params = dict(bookId=bookId, readingDetail=1, readingBookIndex=1, finishedDate=1)
-    r = session.get(WEREAD_READ_INFO_URL, params=params)
-    if r.ok:
-        return r.json()
-    return None
 
 
 def get_notebooklist(session: requests.Session) -> Optional[List[Dict]]:

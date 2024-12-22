@@ -41,7 +41,7 @@ def process_book(
     logger.info(
         f"Current book: {book.bookId} - {book.title} - {book.isbn} - bookmark_list: {book.bookmark_list}"
     )
-    id = notion_manager.insert_to_notion(book, session)
+    id = notion_manager.insert_to_notion(book)
     results = notion_manager.add_children(id, children)
     if len(grandchild) > 0 and results is not None:
         notion_manager.add_grandchild(grandchild, results)

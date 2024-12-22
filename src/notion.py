@@ -2,10 +2,9 @@ import time
 from datetime import datetime
 from typing import Dict, List, Optional
 
-import requests
 from notion_client import Client
 
-from book import Book, get_read_info
+from book import Book
 from logger import logger
 from util import calculate_book_str_id, format_reading_time
 
@@ -27,13 +26,13 @@ class NotionManager:
         )
         self._delete_existing_entries(response)
 
-    def insert_to_notion(self, book: Book, session: requests.Session) -> str:
+    def insert_to_notion(self, book: Book) -> str:
         """插入到notion"""
         time.sleep(1)
         logger.info(f"Inserting book: {book.title} with ID: {book.bookId}")
 
         parent = {"database_id": self.database_id, "type": "database_id"}
-        properties = self._create_properties(book, session)
+        properties = self._create_properties(book)
         icon = {"type": "external", "external": {"url": book.cover}}
 
         response = self.client.pages.create(
@@ -74,7 +73,7 @@ class NotionManager:
             time.sleep(1)
             self.client.blocks.delete(block_id=result["id"])
 
-    def _create_properties(self, book: Book, session: requests.Session) -> Dict:
+    def _create_properties(self, book: Book) -> Dict:
         properties = {
             "BookName": {"title": [{"type": "text", "text": {"content": book.title}}]},
             "BookId": {
@@ -99,30 +98,27 @@ class NotionManager:
                 ]
             },
         }
-        read_info = get_read_info(session, bookId=book.bookId)
-        if read_info is not None:
-            self._add_read_info_to_properties(properties, read_info)
-        return properties
 
-    def _add_read_info_to_properties(self, properties: Dict, read_info: Dict) -> None:
-        markedStatus = read_info.get("markedStatus", 0)
-        readingTime = read_info.get("readingTime", 0)
-        format_time = format_reading_time(readingTime)
-        properties["Status"] = {
-            "select": {"name": "读完" if markedStatus == 4 else "在读"}
-        }
-        properties["ReadingTime"] = {
-            "rich_text": [{"type": "text", "text": {"content": format_time}}]
-        }
-        if "finishedDate" in read_info:
+        if book.status:
+            properties["Status"] = {"select": {"name": book.status}}
+
+        if book.reading_time:
+            format_time = format_reading_time(book.reading_time)
+            properties["ReadingTime"] = {
+                "rich_text": [{"type": "text", "text": {"content": format_time}}]
+            }
+
+        if book.finished_date:
             properties["Date"] = {
                 "date": {
-                    "start": datetime.utcfromtimestamp(
-                        read_info.get("finishedDate")
-                    ).strftime("%Y-%m-%d %H:%M:%S"),
+                    "start": datetime.utcfromtimestamp(book.finished_date).strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    ),
                     "time_zone": "Asia/Shanghai",
                 }
             }
+
+        return properties
 
     def _extract_latest_sort(self, response: Dict) -> int:
         if len(response.get("results")) == 1:
