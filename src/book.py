@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Tuple
 
 import requests
 
-from constants import WEREAD_BOOK_INFO, WEREAD_NOTEBOOKS_URL, WEREAD_READ_INFO_URL
+from constants import WEREAD_NOTEBOOKS_URL, WEREAD_READ_INFO_URL
 from logger import logger
 from util import get_callout_block
 from weread import WeReadClient
@@ -94,19 +94,6 @@ def get_read_info(session: requests.Session, bookId: str) -> Optional[Dict]:
     if r.ok:
         return r.json()
     return None
-
-
-def get_bookinfo(session: requests.Session, bookId: str) -> Tuple[str, float]:
-    """获取书的详情"""
-    params = dict(bookId=bookId)
-    r = session.get(WEREAD_BOOK_INFO, params=params)
-    isbn = ""
-    newRating = 0.0
-    if r.ok:
-        data = r.json()
-        isbn = data["isbn"]
-        newRating = data["newRating"] / 1000
-    return (isbn, newRating)
 
 
 def get_notebooklist(session: requests.Session) -> Optional[List[Dict]]:
