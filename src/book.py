@@ -21,6 +21,7 @@ class Book:
     status: str = field(default="")
     reading_time: int = field(default=0)
     finished_date: Optional[int] = field(default=None)
+    category: str = field(default="")
     bookmark_list: List[Dict] = field(default_factory=list)
     summary: List[Dict] = field(default_factory=list)
     reviews: List[Dict] = field(default_factory=list)
@@ -29,12 +30,24 @@ class Book:
     @classmethod
     def from_json(cls, data: dict) -> "Book":
         book_data = data.get("book", data)  # Handle both nested and flat JSON
+
+        # Extract category from categories array with a default value
+        categories = book_data.get("categories", [])
+        category = (
+            categories[0].get(
+                "title", "未分类"
+            )  # Use "未分类" as default if title is missing
+            if categories
+            else "未分类"  # Use "未分类" if no categories
+        )
+
         return cls(
             bookId=book_data.get("bookId"),
             title=book_data.get("title"),
             author=book_data.get("author"),
             cover=book_data.get("cover"),
             sort=book_data.get("sort"),
+            category=category,
         )
 
     def update_book_info(self, data: Dict):

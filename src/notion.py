@@ -99,6 +99,9 @@ class NotionManager:
             },
         }
 
+        if book.category:
+            properties["Category"] = {"select": {"name": book.category}}
+
         if book.status:
             properties["Status"] = {"select": {"name": book.status}}
 
