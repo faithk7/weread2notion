@@ -97,10 +97,10 @@ class NotionManager:
                     }
                 ]
             },
+            "Category": {
+                "select": {"name": book.category if book.category else "未分类"}
+            },
         }
-
-        if book.category:
-            properties["Category"] = {"select": {"name": book.category}}
 
         if book.status:
             properties["Status"] = {"select": {"name": book.status}}
