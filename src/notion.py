@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from notion_client import Client
+from notion_client.errors import APIResponseError
 
 from book import Book
 from logger import logger
@@ -26,19 +27,30 @@ class NotionManager:
         )
         self._delete_existing_entries(response)
 
-    def insert_to_notion(self, book: Book) -> str:
-        """插入到notion"""
-        time.sleep(1)
+    def insert_to_notion(self, book: Book, max_retries: int = 3) -> str:
+        """插入到notion with retry logic"""
         logger.info(f"Inserting book: {book.title} with ID: {book.bookId}")
 
         parent = {"database_id": self.database_id, "type": "database_id"}
         properties = self._create_properties(book)
         icon = {"type": "external", "external": {"url": book.cover}}
 
-        response = self.client.pages.create(
-            parent=parent, icon=icon, properties=properties
-        )
-        return response["id"]
+        for attempt in range(max_retries):
+            try:
+                response = self.client.pages.create(
+                    parent=parent, icon=icon, properties=properties
+                )
+                return response["id"]
+            except APIResponseError as e:
+                if "Conflict" in str(e) and attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 2  # Exponential backoff
+                    logger.warning(
+                        f"Conflict occurred while saving {book.title}. "
+                        f"Retrying in {wait_time} seconds... (Attempt {attempt + 1}/{max_retries})"
+                    )
+                    time.sleep(wait_time)
+                    continue
+                raise  # Re-raise the exception if we've exhausted retries or it's not a conflict error
 
     def add_children(self, id: str, children: List[Dict]) -> Optional[List[Dict]]:
         results = []
