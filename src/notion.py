@@ -12,12 +12,13 @@ from util import calculate_book_str_id, format_reading_time
 
 class NotionManager:
     def __init__(self, notion_token: str, database_id: str):
-        self.client = Client(auth=notion_token)
+        self.client = Client(
+            auth=notion_token,
+        )
         self.database_id = database_id
 
     def check_and_delete(self, bookId: str) -> None:
         """检查是否已经插入过 如果已经插入了就删除"""
-        time.sleep(1)
         filter = self._create_filter("BookId", bookId)
         logger.info(
             f"Database info: {self.client.databases.retrieve(self.database_id)}"
@@ -55,7 +56,6 @@ class NotionManager:
     def add_children(self, id: str, children: List[Dict]) -> Optional[List[Dict]]:
         results = []
         for i in range(0, len(children) // 100 + 1):
-            time.sleep(1)  # NOTE: TEMP FIX
             response = self.client.blocks.children.append(
                 block_id=id, children=children[i * 100 : (i + 1) * 100]
             )
@@ -64,7 +64,6 @@ class NotionManager:
 
     def add_grandchild(self, grandchild: Dict[int, Dict], results: List[Dict]) -> None:
         for key, value in grandchild.items():
-            time.sleep(1)
             id = results[key].get("id")
             self.client.blocks.children.append(block_id=id, children=[value])
 
@@ -82,7 +81,6 @@ class NotionManager:
 
     def _delete_existing_entries(self, response: Dict) -> None:
         for result in response["results"]:
-            time.sleep(1)
             self.client.blocks.delete(block_id=result["id"])
 
     def _create_properties(self, book: Book) -> Dict:
