@@ -27,7 +27,7 @@ class NotionManager:
         )
         self._delete_existing_entries(response)
 
-    def insert_to_notion(self, book: Book, max_retries: int = 3) -> str:
+    def insert_to_notion(self, book: Book, max_retries: int = 1) -> str:
         """插入到notion with retry logic"""
         logger.info(f"Inserting book: {book.title} with ID: {book.bookId}")
 
