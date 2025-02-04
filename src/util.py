@@ -1,106 +1,153 @@
+from __future__ import annotations
+
 import hashlib
 import re
 from http.cookies import SimpleCookie
-from typing import List, Tuple
+from typing import Dict, List, Optional, Tuple, TypeAlias
 
+from requests.cookies import RequestsCookieJar
 from requests.utils import cookiejar_from_dict
+
+from logger import logger
+
+# Type Aliases
+CookieDict: TypeAlias = Dict[str, str]
+CalloutBlock: TypeAlias = Dict[str, any]
+
+# Constants for styling
+STYLE_EMOJIS = {
+    0: "💡",  # Direct line
+    1: "⭐",  # Background color
+    2: "🌟",  # Wavy line
+    None: "✍️",  # Note
+}
+
+COLOR_STYLES = {
+    1: "red",
+    2: "purple",
+    3: "blue",
+    4: "green",
+    5: "yellow",
+    None: "default",
+}
 
 
 def transform_id(book_id: str) -> Tuple[str, List[str]]:
+    """Transform book ID into hexadecimal representation.
+
+    Args:
+        book_id: The book identifier string.
+
+    Returns:
+        Tuple containing transformation code and list of transformed IDs.
+
+    Raises:
+        ValueError: If book_id is empty or invalid.
+    """
+    if not book_id:
+        raise ValueError("Book ID cannot be empty")
+
     id_length = len(book_id)
 
-    # Check if the book_id is purely numeric
     if re.match("^\d*$", book_id):
-        hex_parts = []
-        # Convert each 9-digit segment to hexadecimal
-        for i in range(0, id_length, 9):
-            segment = book_id[i : min(i + 9, id_length)]
-            hex_parts.append(format(int(segment), "x"))
+        hex_parts = [
+            format(int(book_id[i : min(i + 9, id_length)]), "x")
+            for i in range(0, id_length, 9)
+        ]
         return "3", hex_parts
 
-    # Convert each character to its hexadecimal representation
     hex_result = "".join(format(ord(char), "x") for char in book_id)
     return "4", [hex_result]
 
 
 def calculate_book_str_id(book_id: str) -> str:
-    # Create an MD5 hash of the book_id
+    """Calculate a unique string identifier for a book.
+
+    Args:
+        book_id: The original book identifier.
+
+    Returns:
+        A transformed string identifier.
+
+    Raises:
+        ValueError: If book_id is empty or invalid.
+    """
+    if not book_id:
+        raise ValueError("Book ID cannot be empty")
+
     md5 = hashlib.md5(usedforsecurity=False)
     md5.update(book_id.encode("utf-8"))
     digest = md5.hexdigest()
 
-    # Start the result with the first 3 characters of the digest
     result = digest[0:3]
-
-    # Transform the book_id and append the transformation code and last 2 digest characters
     code, transformed_ids = transform_id(book_id)
     result += code + "2" + digest[-2:]
 
-    # Append each transformed ID with its length in hexadecimal
-    for transformed_id in transformed_ids:
+    for i, transformed_id in enumerate(transformed_ids):
         hex_length_str = format(len(transformed_id), "x").zfill(2)
         result += hex_length_str + transformed_id
-
-        # Add a separator if not the last element
-        if transformed_id != transformed_ids[-1]:
+        if i < len(transformed_ids) - 1:
             result += "g"
 
-    # Ensure the result is at least 20 characters long
     if len(result) < 20:
         result += digest[0 : 20 - len(result)]
 
-    # Append the first 3 characters of a new MD5 hash of the result
-    md5 = hashlib.md5(usedforsecurity=False)
-    md5.update(result.encode("utf-8"))
-    result += md5.hexdigest()[0:3]
+    final_md5 = hashlib.md5(usedforsecurity=False)
+    final_md5.update(result.encode("utf-8"))
+    result += final_md5.hexdigest()[0:3]
 
     return result
 
 
-def parse_cookie_string(cookie_string: str):
-    cookie = SimpleCookie()
-    cookie.load(cookie_string)
-    cookies_dict = {}
-    cookiejar = None
-    for key, morsel in cookie.items():
-        cookies_dict[key] = morsel.value
-        cookiejar = cookiejar_from_dict(cookies_dict, cookiejar=None, overwrite=True)
-    return cookiejar
+def parse_cookie_string(cookie_string: str) -> Optional[RequestsCookieJar]:
+    """Parse a cookie string into a RequestsCookieJar.
+
+    Args:
+        cookie_string: Raw cookie string from browser.
+
+    Returns:
+        RequestsCookieJar object or None if parsing fails.
+
+    Raises:
+        ValueError: If cookie_string is empty or malformed.
+    """
+    if not cookie_string:
+        raise ValueError("Cookie string cannot be empty")
+
+    try:
+        cookie = SimpleCookie()
+        cookie.load(cookie_string)
+        cookies_dict = {key: morsel.value for key, morsel in cookie.items()}
+        return cookiejar_from_dict(cookies_dict, cookiejar=None, overwrite=True)
+    except Exception as e:
+        logger.error(f"Failed to parse cookie string: {str(e)}")
+        return None
 
 
-def get_callout_block(content: str, style: int, colorStyle: int, reviewId: str) -> dict:
-    # 根据不同的划线样式设置不同的emoji 直线type=0 背景颜色是1 波浪线是2
-    emoji = "🌟"
-    if style == 0:
-        emoji = "💡"
-    elif style == 1:
-        emoji = "⭐"
-    # 如果reviewId不是空说明是笔记
-    if reviewId is not None:
-        emoji = "✍️"
-    color = "default"
-    # 根据划线颜色设置文字的颜色
-    if colorStyle == 1:
-        color = "red"
-    elif colorStyle == 2:
-        color = "purple"
-    elif colorStyle == 3:
-        color = "blue"
-    elif colorStyle == 4:
-        color = "green"
-    elif colorStyle == 5:
-        color = "yellow"
+def get_callout_block(
+    content: str,
+    style: Optional[int],
+    color_style: Optional[int],
+    review_id: Optional[str],
+) -> CalloutBlock:
+    """Create a callout block with specified styling.
+
+    Args:
+        content: The text content of the callout.
+        style: Style indicator (0=line, 1=background, 2=wavy).
+        color_style: Color indicator (1-5 for different colors).
+        review_id: Review identifier, if this is a note.
+
+    Returns:
+        Dictionary containing the callout block configuration.
+    """
+    emoji = STYLE_EMOJIS.get(None if review_id is not None else style, "🌟")
+    color = COLOR_STYLES.get(color_style, "default")
+
     return {
         "type": "callout",
         "callout": {
-            "rich_text": [
-                {
-                    "type": "text",
-                    "text": {
-                        "content": content,
-                    },
-                }
-            ],
+            "rich_text": [{"type": "text", "text": {"content": content}}],
             "icon": {"emoji": emoji},
             "color": color,
         },
@@ -108,12 +155,24 @@ def get_callout_block(content: str, style: int, colorStyle: int, reviewId: str) 
 
 
 def format_reading_time(reading_time: int) -> str:
-    """Format reading time from seconds to a string with hours and minutes."""
-    format_time = ""
-    hour = reading_time // 3600
-    if hour > 0:
-        format_time += f"{hour}时"
-    minutes = reading_time % 3600 // 60
+    """Format reading time from seconds to human-readable string.
+
+    Args:
+        reading_time: Time in seconds.
+
+    Returns:
+        Formatted string with hours and minutes.
+    """
+    if reading_time < 0:
+        raise ValueError("Reading time cannot be negative")
+
+    hours = reading_time // 3600
+    minutes = (reading_time % 3600) // 60
+
+    parts = []
+    if hours > 0:
+        parts.append(f"{hours}时")
     if minutes > 0:
-        format_time += f"{minutes}分"
-    return format_time
+        parts.append(f"{minutes}分")
+
+    return "".join(parts)
