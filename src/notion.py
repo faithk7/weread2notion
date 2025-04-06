@@ -1,6 +1,8 @@
+import random
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
+from functools import wraps
+from typing import Any, Callable, Dict, List, Optional
 
 from notion_client import Client
 from notion_client.errors import APIResponseError
@@ -10,6 +12,37 @@ from logger import logger
 from util import calculate_book_str_id, format_reading_time
 
 
+def retry_with_backoff(max_retries: int = 2, initial_delay: float = 3.0):
+    def decorator(func: Callable):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            delay = initial_delay
+            for attempt in range(max_retries):
+                try:
+                    time.sleep(delay)  # Always wait before making a request
+                    return func(*args, **kwargs)
+                except APIResponseError as e:
+                    if "rate limited" in str(e).lower():
+                        if attempt == max_retries - 1:
+                            raise
+                        # Add some random jitter to prevent thundering herd
+                        jitter = random.uniform(0, 1)
+                        wait_time = delay + jitter
+                        logger.warning(
+                            f"Rate limited. Retrying in {wait_time:.2f} seconds... "
+                            f"(Attempt {attempt + 1}/{max_retries})"
+                        )
+                        time.sleep(wait_time)
+                        delay *= 2  # Exponential backoff
+                    else:
+                        raise
+            return None
+
+        return wrapper
+
+    return decorator
+
+
 class NotionManager:
     def __init__(self, notion_token: str, database_id: str):
         self.client = Client(
@@ -17,15 +50,25 @@ class NotionManager:
         )
         self.database_id = database_id
 
+    @retry_with_backoff()
+    def _make_request(self, operation: Callable[[], Any]) -> Any:
+        """Generic method to make Notion API requests with retry logic"""
+        return operation()
+
     def check_and_delete(self, bookId: str) -> None:
         """检查是否已经插入过 如果已经插入了就删除"""
         filter = self._create_filter("BookId", bookId)
-        logger.info(
-            f"Database info: {self.client.databases.retrieve(self.database_id)}"
-        )
-        response = self.client.databases.query(
-            database_id=self.database_id, filter=filter
-        )
+
+        def retrieve_op():
+            return self.client.databases.retrieve(self.database_id)
+
+        def query_op():
+            return self.client.databases.query(
+                database_id=self.database_id, filter=filter
+            )
+
+        logger.info(f"Database info: {self._make_request(retrieve_op)}")
+        response = self._make_request(query_op)
         self._delete_existing_entries(response)
 
     def insert_to_notion(self, book: Book, max_retries: int = 1) -> str:
@@ -36,44 +79,48 @@ class NotionManager:
         properties = self._create_properties(book)
         icon = {"type": "external", "external": {"url": book.cover}}
 
-        for attempt in range(max_retries):
-            try:
-                response = self.client.pages.create(
-                    parent=parent, icon=icon, properties=properties
-                )
-                return response["id"]
-            except APIResponseError as e:
-                if "Conflict" in str(e) and attempt < max_retries - 1:
-                    wait_time = (attempt + 1) * 2  # Exponential backoff
-                    logger.warning(
-                        f"Conflict occurred while saving {book.title}. "
-                        f"Retrying in {wait_time} seconds... (Attempt {attempt + 1}/{max_retries})"
-                    )
-                    time.sleep(wait_time)
-                    continue
-                raise  # Re-raise the exception if we've exhausted retries or it's not a conflict error
+        def create_op():
+            return self.client.pages.create(
+                parent=parent, icon=icon, properties=properties
+            )
+
+        response = self._make_request(create_op)
+        return response["id"]
 
     def add_children(self, id: str, children: List[Dict]) -> Optional[List[Dict]]:
         results = []
         for i in range(0, len(children) // 100 + 1):
-            response = self.client.blocks.children.append(
-                block_id=id, children=children[i * 100 : (i + 1) * 100]
-            )
+            chunk = children[i * 100 : (i + 1) * 100]
+
+            def append_op(chunk=chunk):  # Bind chunk to closure
+                return self.client.blocks.children.append(block_id=id, children=chunk)
+
+            response = self._make_request(append_op)
             results.extend(response.get("results"))
         return results if len(results) == len(children) else None
 
     def add_grandchild(self, grandchild: Dict[int, Dict], results: List[Dict]) -> None:
         for key, value in grandchild.items():
-            id = results[key].get("id")
-            self.client.blocks.children.append(block_id=id, children=[value])
+            block_id = results[key].get("id")
+
+            def append_op(block_id=block_id, value=value):  # Bind variables to closure
+                return self.client.blocks.children.append(
+                    block_id=block_id, children=[value]
+                )
+
+            self._make_request(append_op)
 
     def get_latest_sort(self) -> int:
         """获取database中的最新时间"""
         filter = {"property": "Sort", "number": {"is_not_empty": True}}
         sorts = [{"property": "Sort", "direction": "descending"}]
-        response = self.client.databases.query(
-            database_id=self.database_id, filter=filter, sorts=sorts, page_size=1
-        )
+
+        def query_op():
+            return self.client.databases.query(
+                database_id=self.database_id, filter=filter, sorts=sorts, page_size=1
+            )
+
+        response = self._make_request(query_op)
         return self._extract_latest_sort(response)
 
     def _create_filter(self, property_name: str, value: str) -> Dict:
@@ -81,7 +128,11 @@ class NotionManager:
 
     def _delete_existing_entries(self, response: Dict) -> None:
         for result in response["results"]:
-            self.client.blocks.delete(block_id=result["id"])
+
+            def delete_op(block_id=result["id"]):  # Bind block_id to closure
+                return self.client.blocks.delete(block_id=block_id)
+
+            self._make_request(delete_op)
 
     def _create_properties(self, book: Book) -> Dict:
         properties = {
