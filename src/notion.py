@@ -12,30 +12,18 @@ from logger import logger
 from util import calculate_book_str_id, format_reading_time
 
 
-def retry_with_backoff(max_retries: int = 2, initial_delay: float = 3.0):
+def retry(max_retries: int = 2, initial_delay: float = 1.0):
     def decorator(func: Callable):
         @wraps(func)
         def wrapper(*args, **kwargs):
             delay = initial_delay
-            for attempt in range(max_retries):
+            for _ in range(max_retries):
                 try:
                     time.sleep(delay)  # Always wait before making a request
                     return func(*args, **kwargs)
                 except APIResponseError as e:
-                    if "rate limited" in str(e).lower():
-                        if attempt == max_retries - 1:
-                            raise
-                        # Add some random jitter to prevent thundering herd
-                        jitter = random.uniform(0, 1)
-                        wait_time = delay + jitter
-                        logger.warning(
-                            f"Rate limited. Retrying in {wait_time:.2f} seconds... "
-                            f"(Attempt {attempt + 1}/{max_retries})"
-                        )
-                        time.sleep(wait_time)
-                        delay *= 2  # Exponential backoff
-                    else:
-                        raise
+                    logger.error(f"Error: {e}")
+                    raise
             return None
 
         return wrapper
@@ -50,7 +38,7 @@ class NotionManager:
         )
         self.database_id = database_id
 
-    @retry_with_backoff()
+    @retry()
     def _make_request(self, operation: Callable[[], Any]) -> Any:
         """Generic method to make Notion API requests with retry logic"""
         return operation()

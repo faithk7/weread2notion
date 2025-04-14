@@ -67,8 +67,12 @@ if __name__ == "__main__":
     assert books is not None, "获取书架和笔记失败"
 
     if test_mode:
-        logger.info("Running in test mode - limiting to 100 books")
+        logger.info("Running in test mode - getting top 1000 books by sort value")
+        books.sort(key=lambda x: x["sort"], reverse=True)
         books = books[:100]
+        logger.info(
+            f"Top 1000 books by sort value: {[{'title': book['book']['title'], 'sort': book['sort']} for book in books]}"
+        )
 
     time = datetime.now()
     with ThreadPoolExecutor() as executor:
