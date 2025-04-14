@@ -17,14 +17,14 @@ def parse_arguments() -> Tuple[str, str, str, bool]:
     for arg in ["weread_cookie", "notion_token", "database_id"]:
         parser.add_argument(arg)
     parser.add_argument(
-        "--test", action="store_true", help="Run in test mode with limited books"
+        "--dev", action="store_true", help="Run in dev mode with limited books"
     )
     options = parser.parse_args()
     return (
         options.weread_cookie,
         options.notion_token,
         options.database_id,
-        options.test,
+        options.dev,
     )
 
 
@@ -53,7 +53,7 @@ def process_book(
 
 
 if __name__ == "__main__":
-    weread_cookie, notion_token, database_id, test_mode = parse_arguments()
+    weread_cookie, notion_token, database_id, dev_mode = parse_arguments()
 
     notion_manager = NotionManager(notion_token, database_id)
     latest_sort = notion_manager.get_latest_sort()
@@ -66,10 +66,10 @@ if __name__ == "__main__":
     books = get_notebooklist(weread_client.session)
     assert books is not None, "获取书架和笔记失败"
 
-    if test_mode:
-        logger.info("Running in test mode - getting top 1000 books by sort value")
+    if dev_mode:
+        logger.info("Running in dev mode - getting top 1000 books by sort value")
         books.sort(key=lambda x: x["sort"], reverse=True)
-        books = books[:100]
+        books = books[:20]
         logger.info(
             f"Top 1000 books by sort value: {[{'title': book['book']['title'], 'sort': book['sort']} for book in books]}"
         )

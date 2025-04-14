@@ -1,5 +1,5 @@
 src/__pycache__/**/*
 .vscode/**/*
 run.sh
-test.sh
+dev.sh
 weread2notion_*.log
