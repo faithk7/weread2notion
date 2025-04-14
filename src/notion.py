@@ -1,14 +1,33 @@
 import time
 from datetime import datetime
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, TypeAlias
 
 from notion_client import Client
 from notion_client.errors import APIResponseError
 
 from book import Book
 from logger import logger
-from util import calculate_book_str_id, format_reading_time, get_callout_block
+from util import calculate_book_str_id, format_reading_time
+
+# Constants for styling
+STYLE_EMOJIS = {
+    0: "💡",  # Direct line
+    1: "⭐",  # Background color
+    2: "🌟",  # Wavy line
+    None: "✍️",  # Note
+}
+
+COLOR_STYLES = {
+    1: "red",
+    2: "purple",
+    3: "blue",
+    4: "green",
+    5: "yellow",
+    None: "default",
+}
+
+CalloutBlock: TypeAlias = Dict[str, any]
 
 
 def retry(max_retries: int = 2, initial_delay: float = 1.0):
@@ -291,3 +310,33 @@ def _create_summary_callout(review: Dict) -> Dict:
         review.get("colorStyle"),
         review.get("review").get("reviewId"),
     )
+
+
+def get_callout_block(
+    content: str,
+    style: Optional[int],
+    color_style: Optional[int],
+    review_id: Optional[str],
+) -> CalloutBlock:
+    """Create a callout block with specified styling.
+
+    Args:
+        content: The text content of the callout.
+        style: Style indicator (0=line, 1=background, 2=wavy).
+        color_style: Color indicator (1-5 for different colors).
+        review_id: Review identifier, if this is a note.
+
+    Returns:
+        Dictionary containing the callout block configuration.
+    """
+    emoji = STYLE_EMOJIS.get(None if review_id is not None else style, "🌟")
+    color = COLOR_STYLES.get(color_style, "default")
+
+    return {
+        "type": "callout",
+        "callout": {
+            "rich_text": [{"type": "text", "text": {"content": content}}],
+            "icon": {"emoji": emoji},
+            "color": color,
+        },
+    }

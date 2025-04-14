@@ -12,24 +12,6 @@ from logger import logger
 
 # Type Aliases
 CookieDict: TypeAlias = Dict[str, str]
-CalloutBlock: TypeAlias = Dict[str, any]
-
-# Constants for styling
-STYLE_EMOJIS = {
-    0: "💡",  # Direct line
-    1: "⭐",  # Background color
-    2: "🌟",  # Wavy line
-    None: "✍️",  # Note
-}
-
-COLOR_STYLES = {
-    1: "red",
-    2: "purple",
-    3: "blue",
-    4: "green",
-    5: "yellow",
-    None: "default",
-}
 
 
 def transform_id(book_id: str) -> Tuple[str, List[str]]:
@@ -122,36 +104,6 @@ def parse_cookie_string(cookie_string: str) -> Optional[RequestsCookieJar]:
     except Exception as e:
         logger.error(f"Failed to parse cookie string: {str(e)}")
         return None
-
-
-def get_callout_block(
-    content: str,
-    style: Optional[int],
-    color_style: Optional[int],
-    review_id: Optional[str],
-) -> CalloutBlock:
-    """Create a callout block with specified styling.
-
-    Args:
-        content: The text content of the callout.
-        style: Style indicator (0=line, 1=background, 2=wavy).
-        color_style: Color indicator (1-5 for different colors).
-        review_id: Review identifier, if this is a note.
-
-    Returns:
-        Dictionary containing the callout block configuration.
-    """
-    emoji = STYLE_EMOJIS.get(None if review_id is not None else style, "🌟")
-    color = COLOR_STYLES.get(color_style, "default")
-
-    return {
-        "type": "callout",
-        "callout": {
-            "rich_text": [{"type": "text", "text": {"content": content}}],
-            "icon": {"emoji": emoji},
-            "color": color,
-        },
-    }
 
 
 def format_reading_time(reading_time: int) -> str:
