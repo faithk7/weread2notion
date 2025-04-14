@@ -1,11 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import requests
 
 from constants import WEREAD_NOTEBOOKS_URL
-from logger import logger
-from util import get_callout_block
 from weread import WeReadClient
 
 
@@ -127,114 +125,3 @@ def get_notebooklist(session: requests.Session) -> Optional[List[Dict]]:
     else:
         print(r.text)
     return None
-
-
-def get_table_of_contents() -> Dict:
-    """获取目录"""
-    return {"type": "table_of_contents", "table_of_contents": {"color": "default"}}
-
-
-def get_heading(level: int, content: str) -> Dict:
-    if level == 1:
-        heading = "heading_1"
-    elif level == 2:
-        heading = "heading_2"
-    else:
-        heading = "heading_3"
-    return {
-        "type": heading,
-        heading: {
-            "rich_text": [
-                {
-                    "type": "text",
-                    "text": {
-                        "content": content,
-                    },
-                }
-            ],
-            "color": "default",
-            "is_toggleable": False,
-        },
-    }
-
-
-def get_quote(content: str) -> Dict:
-    return {
-        "type": "quote",
-        "quote": {
-            "rich_text": [
-                {
-                    "type": "text",
-                    "text": {"content": content},
-                }
-            ],
-            "color": "default",
-        },
-    }
-
-
-def get_children(
-    chapter: Optional[Dict[int, Dict]], summary: List[Dict], bookmark_list: List[Dict]
-) -> Tuple[List[Dict], Dict[int, Dict]]:
-    children = []
-    grandchild = {}
-
-    if chapter is not None:
-        children.append(get_table_of_contents())
-        d = _group_bookmarks_by_chapter(bookmark_list)
-
-        for key, value in d.items():
-            if key in chapter:
-                children.append(_add_chapter_heading(chapter, key))
-
-            for i in value:
-                callout = _create_callout(i)
-                children.append(callout)
-
-                if i.get("abstract"):
-                    quote = get_quote(i.get("abstract"))
-                    grandchild[len(children) - 1] = quote
-    else:
-        for data in bookmark_list:
-            children.append(_create_callout(data))
-
-    if summary:
-        children.append(get_heading(1, "点评"))
-        for i in summary:
-            children.append(_create_summary_callout(i))
-
-    logger.info(f"Children: {children}")
-    logger.info(f"Grandchild: {grandchild}")
-    return children, grandchild
-
-
-def _group_bookmarks_by_chapter(bookmark_list: List[Dict]) -> Dict[int, List[Dict]]:
-    d = {}
-    for data in bookmark_list:
-        chapterUid = data.get("chapterUid", 1)
-        if chapterUid not in d:
-            d[chapterUid] = []
-        d[chapterUid].append(data)
-    return d
-
-
-def _add_chapter_heading(chapter: Dict[int, Dict], key: int) -> Dict:
-    return get_heading(chapter[key].get("level"), chapter[key].get("title"))
-
-
-def _create_callout(data: Dict) -> Dict:
-    return get_callout_block(
-        data.get("markText"),
-        data.get("style"),
-        data.get("colorStyle"),
-        data.get("reviewId"),
-    )
-
-
-def _create_summary_callout(review: Dict) -> Dict:
-    return get_callout_block(
-        review.get("review").get("content"),
-        review.get("style"),
-        review.get("colorStyle"),
-        review.get("review").get("reviewId"),
-    )

@@ -7,10 +7,10 @@ from typing import Any, Dict, Tuple
 
 from notion_client import Client
 
-from book import Book, BookService, get_children, get_notebooklist
+from book import Book, BookService
 from logger import logger
-from notion import NotionManager
-from weread import WeReadClient
+from notion import NotionManager, get_children
+from weread import WeReadClient, get_notebooklist
 
 
 def parse_arguments() -> Tuple[str, str, str, bool]:

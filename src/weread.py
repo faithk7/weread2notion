@@ -6,6 +6,7 @@ from constants import (
     WEREAD_BOOK_INFO,
     WEREAD_BOOKMARKLIST_URL,
     WEREAD_CHAPTER_INFO,
+    WEREAD_NOTEBOOKS_URL,
     WEREAD_READ_INFO_URL,
     WEREAD_REVIEW_LIST_URL,
     WEREAD_URL,
@@ -44,3 +45,17 @@ class WeReadClient:
         )
         r = self.session.get(WEREAD_READ_INFO_URL, params=params)
         return r.json() if r.ok else None
+
+
+def get_notebooklist(session: requests.Session) -> Optional[List[Dict]]:
+    """获取笔记本列表"""
+    r = session.get(WEREAD_NOTEBOOKS_URL)
+    if r.ok:
+        data = r.json()
+        books = data.get("books")
+        print("len(books)", len(books))
+        books.sort(key=lambda x: x["sort"])
+        return books
+    else:
+        print(r.text)
+    return None
