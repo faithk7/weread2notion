@@ -1,9 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-import requests
-
-from constants import WEREAD_NOTEBOOKS_URL
 from weread import WeReadClient
 
 
