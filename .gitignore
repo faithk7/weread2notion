@@ -3,3 +3,4 @@ src/__pycache__/**/*
 run.sh
 dev.sh
 weread2notion_*.log
+src/notion/__pycache__/**/*
