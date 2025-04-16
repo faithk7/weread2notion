@@ -95,14 +95,23 @@ class NotionManager:
 
     def add_children(self, id: str, children: List[Dict]) -> Optional[List[Dict]]:
         results = []
-        for i in range(0, len(children) // 100 + 1):
-            chunk = children[i * 100 : (i + 1) * 100]
+        # Increase chunk size for fewer API calls
+        chunk_size = 50  # Notion allows up to 100, but using 50 for better stability
 
-            def append_op(chunk=chunk):  # Bind chunk to closure
+        for i in range(0, len(children), chunk_size):
+            chunk = children[i : i + chunk_size]
+
+            def append_op(chunk=chunk):
                 return self.client.blocks.children.append(block_id=id, children=chunk)
 
+            # Add a small delay between chunks to avoid rate limits
+            if i > 0:
+                time.sleep(0.5)  # 500ms delay between chunks
+
             response = self._make_request(append_op)
-            results.extend(response.get("results"))
+            if response and "results" in response:
+                results.extend(response["results"])
+
         return results if len(results) == len(children) else None
 
     def add_grandchild(self, grandchild: Dict[int, Dict], results: List[Dict]) -> None:
