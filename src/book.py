@@ -111,17 +111,3 @@ class BookService:
             book.update_read_info(read_info)
 
         return book
-
-
-def get_notebooklist(session: requests.Session) -> Optional[List[Dict]]:
-    """获取笔记本列表"""
-    r = session.get(WEREAD_NOTEBOOKS_URL)
-    if r.ok:
-        data = r.json()
-        books = data.get("books")
-        print("len(books)", len(books))
-        books.sort(key=lambda x: x["sort"])
-        return books
-    else:
-        print(r.text)
-    return None

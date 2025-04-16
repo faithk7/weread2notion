@@ -252,6 +252,7 @@ def get_children(
     grandchild = {}
 
     if chapter is not None:
+        children.append(get_heading(1, "目录"))
         children.append(get_table_of_contents())
         d = _group_bookmarks_by_chapter(bookmark_list)
 
