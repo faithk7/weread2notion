@@ -1,5 +1,4 @@
 import time
-from dataclasses import dataclass
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional
 
@@ -29,7 +28,6 @@ def retry(max_retries: int = 2, initial_delay: float = 1.0):
     return decorator
 
 
-@dataclass
 class NotionBlockManager:
     """Manages block operations in Notion"""
 

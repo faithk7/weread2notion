@@ -1,11 +1,9 @@
-from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 from logger import logger
 from notion.blocks import BlockDict, NotionBlockBuilder
 
 
-@dataclass
 class BookContentBuilder:
     """Builds the content structure for a book in Notion"""
 
