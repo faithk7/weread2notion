@@ -7,7 +7,8 @@ from notion.blocks import BlockDict, NotionBlockBuilder
 class BookContentBuilder:
     """Builds the content structure for a book in Notion"""
 
-    block_builder: NotionBlockBuilder
+    def __init__(self, block_builder: NotionBlockBuilder):
+        self.block_builder = block_builder
 
     def build_book_content(
         self,

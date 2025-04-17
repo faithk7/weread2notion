@@ -34,8 +34,9 @@ def retry(max_retries: int = 2, initial_delay: float = 1.0):
 class NotionDatabaseManager:
     """Handles all database-related operations in Notion"""
 
-    client: Client
-    database_id: str
+    def __init__(self, client: Client, database_id: str):
+        self.client = client
+        self.database_id = database_id
 
     def create_book_page(self, book: Book) -> str:
         """Creates a new page for a book in the database"""

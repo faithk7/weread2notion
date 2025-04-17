@@ -31,7 +31,8 @@ def retry(max_retries: int = 2, initial_delay: float = 1.0):
 class NotionBlockManager:
     """Manages block operations in Notion"""
 
-    client: Client
+    def __init__(self, client: Client):
+        self.client = client
 
     @retry()
     def _make_request(self, operation: Callable[[], Any]) -> Any:
