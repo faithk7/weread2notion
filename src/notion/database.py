@@ -10,7 +10,11 @@ from pytz import timezone
 
 from book import Book
 from logger import logger
-from util import calculate_book_str_id, format_reading_time, format_timestamp_for_notion
+from utils import (
+    calculate_book_str_id,
+    format_reading_time,
+    format_timestamp_for_notion,
+)
 
 
 def retry(max_retries: int = 2, initial_delay: float = 1.0):

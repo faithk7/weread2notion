@@ -8,7 +8,7 @@ from notion_client.errors import APIResponseError
 
 from book import Book
 from logger import logger
-from util import calculate_book_str_id, format_reading_time
+from utils import calculate_book_str_id, format_reading_time
 
 # Constants for styling
 STYLE_EMOJIS = {

@@ -11,7 +11,7 @@ from constants import (
     WEREAD_REVIEW_LIST_URL,
     WEREAD_URL,
 )
-from util import parse_cookie_string
+from utils import parse_cookie_string
 
 
 class WeReadClient:
