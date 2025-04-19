@@ -10,7 +10,7 @@ from pytz import timezone
 
 from book import Book
 from logger import logger
-from util import calculate_book_str_id, format_reading_time
+from util import calculate_book_str_id, format_reading_time, format_timestamp_for_notion
 
 
 def retry(max_retries: int = 2, initial_delay: float = 1.0):
@@ -139,16 +139,9 @@ def build_properties(book: Book) -> Dict:
         "Category": {"select": {"name": book.category if book.category else "未分类"}},
     }
 
-    # Try to add Updated_Time if the property exists in the database
+    # Try to add UpdatedTime if the property exists in the database
     try:
-        properties["UpdatedTime"] = {
-            "date": {
-                "start": datetime.now()
-                .astimezone(timezone("Asia/Shanghai"))
-                .strftime("%Y-%m-%d %H:%M:%S"),
-                "time_zone": "Asia/Shanghai",
-            }
-        }
+        properties["UpdatedTime"] = format_timestamp_for_notion()
     except Exception as e:
         logger.warning(f"Could not add UpdatedTime property: {e}")
 
@@ -162,13 +155,6 @@ def build_properties(book: Book) -> Dict:
         }
 
     if book.finished_date:
-        properties["FinishedDate"] = {
-            "date": {
-                "start": datetime.utcfromtimestamp(book.finished_date).strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                ),
-                "time_zone": "Asia/Shanghai",
-            }
-        }
+        properties["FinishedDate"] = format_timestamp_for_notion(book.finished_date)
 
     return properties

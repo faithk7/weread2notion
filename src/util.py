@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import re
+from datetime import datetime
 from http.cookies import SimpleCookie
 from typing import Dict, List, Optional, Tuple, TypeAlias
 
+from pytz import timezone
 from requests.cookies import RequestsCookieJar
 from requests.utils import cookiejar_from_dict
 
@@ -128,3 +130,32 @@ def format_reading_time(reading_time: int) -> str:
         parts.append(f"{minutes}分")
 
     return "".join(parts)
+
+
+def format_timestamp_for_notion(
+    timestamp: Optional[int] = None, tz_name: str = "Asia/Shanghai"
+) -> Dict:
+    """Format a timestamp for Notion's date property.
+    If no timestamp is provided, uses current time.
+
+    Args:
+        timestamp: Optional Unix timestamp to format. If None, uses current time.
+        tz_name: The timezone name to use. Defaults to Asia/Shanghai.
+
+    Returns:
+        Dictionary formatted for Notion's date property.
+    """
+    if timestamp is None:
+        date = datetime.now()
+    else:
+        date = datetime.fromtimestamp(timestamp)
+
+    tz = timezone(tz_name)
+    localized_date = date.astimezone(tz)
+
+    return {
+        "date": {
+            "start": localized_date.strftime("%Y-%m-%d %H:%M:%S"),
+            "time_zone": tz_name,
+        }
+    }
