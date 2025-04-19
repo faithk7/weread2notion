@@ -1,12 +1,9 @@
 import time
-from dataclasses import dataclass
-from datetime import datetime
 from functools import wraps
 from typing import Any, Callable, Dict
 
 from notion_client import Client
 from notion_client.errors import APIResponseError
-from pytz import timezone
 
 from book import Book
 from logger import logger
@@ -141,24 +138,27 @@ def build_properties(book: Book) -> Dict:
             ]
         },
         "Category": {"select": {"name": book.category if book.category else "未分类"}},
+        "Status": {"select": {"name": book.status if book.status else ""}},
+        "ReadingTime": {
+            "rich_text": [
+                {
+                    "type": "text",
+                    "text": {
+                        "content": (
+                            format_reading_time(book.reading_time)
+                            if book.reading_time
+                            else ""
+                        )
+                    },
+                }
+            ]
+        },
+        "FinishedDate": (
+            format_timestamp_for_notion(book.finished_date)
+            if book.finished_date
+            else {"date": None}
+        ),
+        "UpdatedTime": format_timestamp_for_notion(),
     }
-
-    # Try to add UpdatedTime if the property exists in the database
-    try:
-        properties["UpdatedTime"] = format_timestamp_for_notion()
-    except Exception as e:
-        logger.warning(f"Could not add UpdatedTime property: {e}")
-
-    if book.status:
-        properties["Status"] = {"select": {"name": book.status}}
-
-    if book.reading_time:
-        format_time = format_reading_time(book.reading_time)
-        properties["ReadingTime"] = {
-            "rich_text": [{"type": "text", "text": {"content": format_time}}]
-        }
-
-    if book.finished_date:
-        properties["FinishedDate"] = format_timestamp_for_notion(book.finished_date)
 
     return properties
