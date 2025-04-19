@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict
 
 from notion_client import Client
 from notion_client.errors import APIResponseError
+from pytz import timezone
 
 from book import Book
 from logger import logger
@@ -138,6 +139,19 @@ def build_properties(book: Book) -> Dict:
         "Category": {"select": {"name": book.category if book.category else "未分类"}},
     }
 
+    # Try to add Updated_Time if the property exists in the database
+    try:
+        properties["UpdatedTime"] = {
+            "date": {
+                "start": datetime.now()
+                .astimezone(timezone("Asia/Shanghai"))
+                .strftime("%Y-%m-%d %H:%M:%S"),
+                "time_zone": "Asia/Shanghai",
+            }
+        }
+    except Exception as e:
+        logger.warning(f"Could not add UpdatedTime property: {e}")
+
     if book.status:
         properties["Status"] = {"select": {"name": book.status}}
 
@@ -148,7 +162,7 @@ def build_properties(book: Book) -> Dict:
         }
 
     if book.finished_date:
-        properties["Date"] = {
+        properties["FinishedDate"] = {
             "date": {
                 "start": datetime.utcfromtimestamp(book.finished_date).strftime(
                     "%Y-%m-%d %H:%M:%S"
