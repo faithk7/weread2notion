@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple
 from book import Book, BookService
 from logger import logger
 from notion import NotionManager
-from weread import WeReadClient, get_notebooklist
+from weread import WeReadClient
 
 
 def parse_arguments() -> Tuple[str, str, str, bool]:
@@ -70,7 +70,7 @@ def main() -> None:
     logger.info(f"Latest sort value from Notion: {latest_sort}")
 
     # Get books from WeRead
-    books = get_notebooklist(weread_client.session)
+    books = weread_client.get_notebooklist()
     if not books:
         logger.error("Failed to get books from WeRead")
         return
