@@ -104,9 +104,9 @@ class BookService:
         if info := self.client.get_bookinfo(book.bookId):
             book.update_book_info(info)
 
-        # Load reviews and summary
-        if reviews := self.client.get_reviews(book.bookId):
-            book.process_reviews(reviews)
+        # Load reviews and summary - TODO: check where went wrong
+        # if reviews := self.client.get_reviews(book.bookId):
+        #     book.process_reviews(reviews)
 
         # Load bookmarks
         if bookmarks := self.client.get_bookmarks(book.bookId):
