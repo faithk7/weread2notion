@@ -66,19 +66,33 @@ class WeReadClient:
             return []
 
     def fetch_chapter_info(self, book_id: str) -> Optional[List[Dict]]:
+        """Fetches chapter information (list of chapter dicts) for a given book ID."""
         try:
-            body = {"bookIds": [book_id], "synckeys": [0], "teenmode": 0}
-            r = self.session.post(WEREAD_CHAPTER_INFO, json=body)
-            if not r.ok:
+            params = {"bookId": book_id}
+            r = self.session.get(WEREAD_CHAPTER_INFO, params=params)
+            r.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
+            data = r.json()
+            # According to the user-provided structure, chapters are under the 'chapters' key
+            chapters_data = data.get("chapters", [])
+            if not isinstance(chapters_data, list):
                 logger.error(
-                    f"Failed to fetch chapter info for {book_id}: {r.status_code}"
+                    f"Unexpected format for chapters data for book {book_id}: {chapters_data}"
                 )
                 return None
-            data = r.json()
-            return data.get("data", [])
+
+            # Return the raw list of chapter dictionaries
+            return chapters_data
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error fetching chapter info for {book_id}: {e}")
-            return []
+            logger.error(f"Error fetching chapter info for book {book_id}: {e}")
+            # Handle potential JSON decoding errors specifically if needed
+            try:
+                error_data = r.json()
+                logger.error(f"Server response: {error_data}")
+            except requests.exceptions.JSONDecodeError:
+                logger.error(
+                    f"Could not decode JSON response. Response text: {r.text[:500]}"
+                )  # Log first 500 chars
+            return None  # Return None on error to indicate failure
 
     def fetch_read_info(self, book_id: str) -> Optional[Dict]:
         try:

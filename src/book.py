@@ -1,7 +1,10 @@
+import logging
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 from weread import WeReadClient
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -21,6 +24,7 @@ class Book:
     summary: List[Dict] = field(default_factory=list)
     reviews: List[Dict] = field(default_factory=list)
     chapters: Dict = field(default_factory=dict)
+    bookmark_count: int = field(default=0)
 
     @classmethod
     def from_json(cls, data: dict) -> "Book":
@@ -68,10 +72,19 @@ class Book:
             ),
         )
 
-    def update_chapters(self, data: List[Dict]):
-        if len(data) == 1 and "updated" in data[0]:
-            update = data[0]["updated"]
-            self.chapters = {item["chapterUid"]: item for item in update}
+    def update_chapters(self, chapters_list: List[Dict]):
+        """Updates the chapters dictionary from a list of chapter dicts."""
+        if not chapters_list:
+            self.chapters = {}
+            return
+
+        self.chapters = {  # Build dictionary mapping chapterUid to the chapter dict
+            chapter.get("chapterUid"): chapter
+            for chapter in chapters_list
+            if chapter.get("chapterUid") is not None
+        }
+        if not self.chapters:
+            logger.warning("No valid chapter data found to update chapters dictionary.")
 
     def update_read_info(self, data: Dict):
         """Updates reading status and time from API data"""
