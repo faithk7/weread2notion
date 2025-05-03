@@ -105,19 +105,19 @@ class BookService:
             book.update_book_info(info)
 
         # Load reviews and summary
-        if reviews := self.client.fetch_reviews(book.bookId):
+        if reviews := self.client.get_reviews(book.bookId):
             book.process_reviews(reviews)
 
         # Load bookmarks
-        if bookmarks := self.client.fetch_bookmark_list(book.bookId):
+        if bookmarks := self.client.get_bookmarks(book.bookId):
             book.update_bookmark_list(bookmarks)
 
         # Load chapters
-        if chapters := self.client.fetch_chapter_info(book.bookId):
+        if chapters := self.client.get_chapters(book.bookId):
             book.update_chapters(chapters)
 
         # Load read info
-        if read_info := self.client.fetch_read_info(book.bookId):
+        if read_info := self.client.get_readinfo(book.bookId):
             book.update_read_info(read_info)
 
         return book

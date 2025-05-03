@@ -87,7 +87,7 @@ class WeReadClient:
             log_prefix=f"book info for {book_id}",
         )
 
-    def fetch_reviews(self, book_id: str) -> List[Dict]:
+    def get_reviews(self, book_id: str) -> List[Dict]:
         data = self._fetch(
             WEREAD_REVIEW_LIST_URL,
             params=dict(bookId=book_id, listType=11, mine=1, syncKey=0),
@@ -95,7 +95,7 @@ class WeReadClient:
         )
         return data.get("reviews", []) if data else []
 
-    def fetch_bookmark_list(self, book_id: str) -> List[Dict]:
+    def get_bookmarks(self, book_id: str) -> List[Dict]:
         data = self._fetch(
             WEREAD_BOOKMARKLIST_URL,
             params=dict(bookId=book_id),
@@ -113,7 +113,7 @@ class WeReadClient:
 
         return data.get("updated", [])  # Safely get 'updated', defaulting to []
 
-    def fetch_chapter_info(self, book_id: str) -> Optional[List[Dict]]:
+    def get_chapters(self, book_id: str) -> Optional[List[Dict]]:
         """Fetches chapter information (list of chapter dicts) for a given book ID."""
         data = self._fetch(
             WEREAD_CHAPTER_INFO,
@@ -134,7 +134,7 @@ class WeReadClient:
 
         return chapters_data
 
-    def fetch_read_info(self, book_id: str) -> Optional[Dict]:
+    def get_readinfo(self, book_id: str) -> Optional[Dict]:
         return self._fetch(
             WEREAD_READ_INFO_URL,
             params=dict(
