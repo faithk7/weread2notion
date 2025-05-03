@@ -7,9 +7,8 @@ from constants import (
     WEREAD_BOOKMARKLIST_URL,
     WEREAD_CHAPTER_INFO,
     WEREAD_NOTEBOOKS_URL,
-    WEREAD_READ_INFO_URL,
+    WEREAD_READ_PROGRESS_URL,
     WEREAD_REVIEW_LIST_URL,
-    WEREAD_URL,
 )
 from logger import logger
 from utils import parse_cookie_string
@@ -87,45 +86,52 @@ class WeReadClient:
             log_prefix=f"book info for {book_id}",
         )
 
-    def get_reviews(self, book_id: str) -> List[Dict]:
-        data = self._fetch(
-            WEREAD_REVIEW_LIST_URL,
-            params=dict(bookId=book_id, listType=11, mine=1, syncKey=0),
-            log_prefix=f"reviews for {book_id}",
+    def get_readinfo(self, book_id: str) -> Optional[Dict]:
+        return self._fetch(
+            WEREAD_READ_PROGRESS_URL,
+            params=dict(
+                bookId=book_id, readingDetail=1, readingBookIndex=1, finishedDate=1
+            ),
+            log_prefix=f"read info for {book_id}",
         )
-        return data.get("reviews", []) if data else []
+
+    def get_reviews(self, book_id: str) -> List[Dict]:
+        return (
+            self._fetch(
+                WEREAD_REVIEW_LIST_URL,
+                params=dict(bookId=book_id, listType=11, mine=1, syncKey=0),
+                log_prefix=f"reviews for {book_id}",
+            )["reviews"]
+            or []
+        )
 
     def get_bookmarks(self, book_id: str) -> List[Dict]:
-        data = self._fetch(
+        bookmarks_response = self._fetch(
             WEREAD_BOOKMARKLIST_URL,
             params=dict(bookId=book_id),
             log_prefix=f"bookmarks for {book_id}",
         )
-        if not data:
+        if not bookmarks_response or "updated" not in bookmarks_response:
+            logger.warning(f"No 'updated' field in bookmark data for {book_id}")
             return []
 
-        # The original logic checked for 'updated' key presence specifically
-        if "updated" not in data:
-            logger.warning(f"No 'updated' field in bookmark data for {book_id}")
-            return (
-                []
-            )  # Return empty list if 'updated' key is missing, consistent with original logic
-
-        return data.get("updated", [])  # Safely get 'updated', defaulting to []
+        return bookmarks_response.get(
+            "updated", []
+        )  # Safely get 'updated', defaulting to []
 
     def get_chapters(self, book_id: str) -> Optional[List[Dict]]:
         """Fetches chapter information (list of chapter dicts) for a given book ID."""
-        data = self._fetch(
+        chapter_response = self._fetch(
             WEREAD_CHAPTER_INFO,
             params={"bookId": book_id},
             log_prefix=f"chapter info for book {book_id}",
             expected_keys=["chapters"],  # Expect 'chapters' key
         )
 
-        if data is None:
+        if chapter_response is None:
             return None  # Error handled by _fetch
 
-        chapters_data = data.get("chapters", [])
+        chapters_data = chapter_response.get("chapters", [])
         if not isinstance(chapters_data, list):
             logger.error(
                 f"Unexpected format for chapters data for book {book_id}: {chapters_data}"
@@ -134,22 +140,15 @@ class WeReadClient:
 
         return chapters_data
 
-    def get_readinfo(self, book_id: str) -> Optional[Dict]:
-        return self._fetch(
-            WEREAD_READ_INFO_URL,
-            params=dict(
-                bookId=book_id, readingDetail=1, readingBookIndex=1, finishedDate=1
-            ),
-            log_prefix=f"read info for {book_id}",
-        )
-
     def get_notebooklist(self) -> List[Dict]:
         """获取笔记本列表"""
-        data = self._fetch(WEREAD_NOTEBOOKS_URL, log_prefix="notebook list")
-        if not data:
+        notebook_response = self._fetch(
+            WEREAD_NOTEBOOKS_URL, log_prefix="notebook list"
+        )
+        if not notebook_response:
             return []
 
-        books = data.get("books", [])
+        books = notebook_response.get("books", [])
         if not books:
             logger.warning("No books found in notebook list")
             return []
