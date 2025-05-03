@@ -101,7 +101,7 @@ class BookService:
     def load_book_details(self, book: Book) -> Book:
         """Loads all book details from the API"""
         # Load book info
-        if info := self.client.fetch_book_info(book.bookId):
+        if info := self.client.get_bookinfo(book.bookId):
             book.update_book_info(info)
 
         # Load reviews and summary

@@ -80,7 +80,7 @@ class WeReadClient:
             logger.error(f"Unexpected error fetching {log_prefix}: {e}")
             return None
 
-    def fetch_book_info(self, book_id: str) -> Optional[Dict]:
+    def get_bookinfo(self, book_id: str) -> Optional[Dict]:
         return self._fetch(
             WEREAD_BOOK_INFO,
             params={"bookId": book_id},
