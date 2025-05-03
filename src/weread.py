@@ -106,39 +106,37 @@ class WeReadClient:
         )
 
     def get_bookmarks(self, book_id: str) -> List[Dict]:
-        bookmarks_response = self._fetch(
+        bookmarks_list = self._fetch(
             WEREAD_BOOKMARKLIST_URL,
             params=dict(bookId=book_id),
             log_prefix=f"bookmarks for {book_id}",
-        )
-        if not bookmarks_response or "updated" not in bookmarks_response:
-            logger.warning(f"No 'updated' field in bookmark data for {book_id}")
-            return []
+        ).get("updated", [])
 
-        return bookmarks_response.get(
-            "updated", []
-        )  # Safely get 'updated', defaulting to []
+        if not bookmarks_list:
+            logger.warning(f"No bookmarks found for {book_id}")
+
+        return bookmarks_list
 
     def get_chapters(self, book_id: str) -> Optional[List[Dict]]:
         """Fetches chapter information (list of chapter dicts) for a given book ID."""
-        chapter_response = self._fetch(
+        chapter_list = self._fetch(
             WEREAD_CHAPTER_INFO,
             params={"bookId": book_id},
             log_prefix=f"chapter info for book {book_id}",
             expected_keys=["chapters"],  # Expect 'chapters' key
-        )
+        ).get("chapters", [])
 
-        if chapter_response is None:
-            return None  # Error handled by _fetch
+        if not chapter_list:
+            logger.warning(f"No chapters found for {book_id}")
+            return None
 
-        chapters_data = chapter_response.get("chapters", [])
-        if not isinstance(chapters_data, list):
+        if not isinstance(chapter_list, list):
             logger.error(
-                f"Unexpected format for chapters data for book {book_id}: {chapters_data}"
+                f"Unexpected format for chapters data for book {book_id}: {chapter_list}"
             )
             return None
 
-        return chapters_data
+        return chapter_list
 
     def get_notebooklist(self) -> List[Dict]:
         """获取笔记本列表"""
