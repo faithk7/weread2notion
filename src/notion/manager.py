@@ -5,8 +5,8 @@ from book import Book
 from logger import logger
 from notion.block_manager import NotionBlockManager
 from notion.blocks import NotionBlockBuilder
-from notion.content_builder import BookContentBuilder
 from notion.database import NotionDatabaseManager
+from notion.page_builder import PageContentBuilder
 
 
 @dataclass
@@ -15,7 +15,7 @@ class NotionManager:
 
     database_manager: NotionDatabaseManager
     block_manager: NotionBlockManager
-    content_builder: BookContentBuilder
+    content_builder: PageContentBuilder
 
     @classmethod
     def create(cls, notion_token: str, database_id: str) -> "NotionManager":
@@ -25,7 +25,7 @@ class NotionManager:
         client = Client(auth=notion_token)
         database_manager = NotionDatabaseManager(client, database_id)
         block_manager = NotionBlockManager(client)
-        content_builder = BookContentBuilder(NotionBlockBuilder())
+        content_builder = PageContentBuilder(NotionBlockBuilder())
 
         return cls(database_manager, block_manager, content_builder)
 
@@ -35,20 +35,24 @@ class NotionManager:
             # Check and delete existing entry
             self.database_manager.check_and_delete(book.bookId)
 
-            # TODO: fix here
             # Create the page
             page_id = self.database_manager.create_book_page(book)
+            if not page_id:
+                logger.error(f"Failed to create Notion page for book: {book.title}")
+                return None
 
-            # TODO: refactor here
-            # Build the content
+            # Build the content using the renamed builder
             children, grandchild = self.content_builder.build_book_content(
                 book.chapters, book.summary, book.bookmark_list
             )
 
             # Add the content only after we create the page
-            results = self.block_manager.add_children(page_id, children)
-            if results and grandchild:
-                self.block_manager.add_grandchildren(results, grandchild)
+            if children:
+                results = self.block_manager.add_children(page_id, children)
+                if results and grandchild:
+                    self.block_manager.add_grandchildren(results, grandchild)
+            else:
+                logger.info(f"No content (children) generated for book: {book.title}")
 
             return page_id
         except Exception as e:

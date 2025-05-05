@@ -4,8 +4,8 @@ from logger import logger
 from notion.blocks import BlockDict, NotionBlockBuilder
 
 
-class BookContentBuilder:
-    """Builds the content structure for a book in Notion"""
+class PageContentBuilder:
+    """Builds the content structure for a Notion page (specifically for a book)"""
 
     def __init__(self, block_builder: NotionBlockBuilder):
         self.block_builder = block_builder
@@ -16,7 +16,7 @@ class BookContentBuilder:
         summary: List[Dict],
         bookmark_list: List[Dict],
     ) -> Tuple[List[BlockDict], Dict[int, BlockDict]]:
-        """Builds the complete content structure for a book"""
+        """Builds the complete content structure for a book page"""
         children = []
         grandchild = {}
 
