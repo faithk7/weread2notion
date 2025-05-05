@@ -35,15 +35,17 @@ class NotionManager:
             # Check and delete existing entry
             self.database_manager.check_and_delete(book.bookId)
 
+            # TODO: fix here
             # Create the page
             page_id = self.database_manager.create_book_page(book)
 
+            # TODO: refactor here
             # Build the content
             children, grandchild = self.content_builder.build_book_content(
                 book.chapters, book.summary, book.bookmark_list
             )
 
-            # Add the content
+            # Add the content only after we create the page
             results = self.block_manager.add_children(page_id, children)
             if results and grandchild:
                 self.block_manager.add_grandchildren(results, grandchild)

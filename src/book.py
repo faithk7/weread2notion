@@ -49,75 +49,106 @@ class Book:
             category=category,
         )
 
-    def update_book_info(self, data: Dict):
-        self.isbn = data["isbn"]
-        self.rating = data["newRating"] / 1000
 
-    def process_reviews(self, reviews: List[Dict]):
-        self.summary = list(filter(lambda x: x.get("review").get("type") == 4, reviews))
-        self.reviews = list(filter(lambda x: x.get("review").get("type") == 1, reviews))
-        self.reviews = list(map(lambda x: x.get("review"), self.reviews))
-        self.reviews = list(
-            map(lambda x: {**x, "markText": x.pop("content")}, self.reviews)
-        )
-
-    def update_bookmark_list(self, updated: List[Dict]):
-        self.bookmark_list = sorted(
-            updated,
-            key=lambda x: (
-                x.get("chapterUid", 1),
-                int(
-                    x.get("range", "0-0").split("-")[0]
-                ),  # be defensive, if range is empty, use 0-0
-            ),
-        )
-
-    def update_chapters(self, chapters_list: List[Dict]):
-        """Updates the chapters dictionary from a list of chapter dicts."""
-        if not chapters_list:
-            self.chapters = {}
-            return
-
-        self.chapters = {  # Build dictionary mapping chapterUid to the chapter dict
-            chapter.get("chapterUid"): chapter
-            for chapter in chapters_list
-            if chapter.get("chapterUid") is not None
-        }
-        if not self.chapters:
-            logger.warning("No valid chapter data found to update chapters dictionary.")
-
-    def update_read_info(self, data: Dict):
-        """Updates reading status and time from API data"""
-        marked_status = data.get("markedStatus", 0)
-        self.status = "读完" if marked_status == 4 else "在读"
-        self.reading_time = data.get("readingTime", 0)
-        self.finished_date = data.get("finishedDate")
-
-
-class BookService:
-    def __init__(self, client: WeReadClient):
+class BookBuilder:
+    def __init__(self, client: WeReadClient, book: Book):
         self.client = client
+        self.book = book
+        self._info: Optional[Dict] = None
+        self._reviews_raw: Optional[List[Dict]] = None
+        self._bookmarks_raw: Optional[List[Dict]] = None
+        self._chapters_raw: Optional[List[Dict]] = None
+        self._read_info: Optional[Dict] = None
 
-    def load_book_details(self, book: Book) -> Book:
-        """Loads all book details from the API"""
-        # Load book info
-        if info := self.client.get_bookinfo(book.bookId):
-            book.update_book_info(info)
+    def fetch_book_info(self) -> "BookBuilder":
+        self._info = self.client.get_bookinfo(self.book.bookId)
+        return self
 
-        # Load reviews and summary - TODO: check where went wrong
-        # if reviews := self.client.get_reviews(book.bookId):
-        #     book.process_reviews(reviews)
+    def fetch_reviews(self) -> "BookBuilder":
+        # TODO: check where went wrong with reviews fetching
+        # self._reviews_raw = self.client.get_reviews(self.book.bookId)
+        pass  # Keep commented out until fixed
+        return self
 
-        # Load bookmarks
-        if bookmarks := self.client.get_bookmarks(book.bookId):
-            book.update_bookmark_list(bookmarks)
+    def fetch_bookmarks(self) -> "BookBuilder":
+        self._bookmarks_raw = self.client.get_bookmarks(self.book.bookId)
+        return self
 
-        # Load chapters
-        if chapters := self.client.get_chapters(book.bookId):
-            book.update_chapters(chapters)
+    def fetch_chapters(self) -> "BookBuilder":
+        self._chapters_raw = self.client.get_chapters(self.book.bookId)
+        return self
 
-        # Load read info
-        if read_info := self.client.get_readinfo(book.bookId):
-            book.update_read_info(read_info)
+    def fetch_read_info(self) -> "BookBuilder":
+        self._read_info = self.client.get_readinfo(self.book.bookId)
+        return self
 
-        return book
+    def fetch_all(self) -> "BookBuilder":
+        self.fetch_book_info()
+        self.fetch_reviews()
+        self.fetch_bookmarks()
+        self.fetch_chapters()
+        self.fetch_read_info()
+        return self
+
+    def _process_book_info(self):
+        if self._info:
+            self.book.isbn = self._info.get("isbn", "")
+            self.book.rating = self._info.get("newRating", 0) / 1000
+
+    def _process_reviews(self):
+        if self._reviews_raw:
+            reviews_list = self._reviews_raw
+            self.book.summary = list(
+                filter(lambda x: x.get("review", {}).get("type") == 4, reviews_list)
+            )
+            self.book.reviews = list(
+                filter(lambda x: x.get("review", {}).get("type") == 1, reviews_list)
+            )
+            self.book.reviews = list(map(lambda x: x.get("review"), self.book.reviews))
+            self.book.reviews = list(
+                map(
+                    lambda x: {**x, "markText": x.pop("content", "")}, self.book.reviews
+                )
+            )
+
+    def _process_bookmarks(self):
+        if self._bookmarks_raw:
+            updated = self._bookmarks_raw
+            self.book.bookmark_list = sorted(
+                updated,
+                key=lambda x: (
+                    x.get("chapterUid", 1),
+                    int(x.get("range", "0-0").split("-")[0]),
+                ),
+            )
+            self.book.bookmark_count = len(self.book.bookmark_list)
+
+    def _process_chapters(self):
+        if self._chapters_raw:
+            chapters_list = self._chapters_raw
+            self.book.chapters = {
+                chapter.get("chapterUid"): chapter
+                for chapter in chapters_list
+                if chapter.get("chapterUid") is not None
+            }
+            if not self.book.chapters:
+                logger.warning(
+                    f"No valid chapter data found for book {self.book.bookId}."
+                )
+
+    def _process_read_info(self):
+        if self._read_info:
+            data = self._read_info
+            marked_status = data.get("markedStatus", 0)
+            self.book.status = "读完" if marked_status == 4 else "在读"
+            self.book.reading_time = data.get("readingTime", 0)
+            self.book.finished_date = data.get("finishedDate")
+
+    def build(self) -> Book:
+        """Constructs the book object with fetched data."""
+        self._process_book_info()
+        self._process_reviews()
+        self._process_bookmarks()
+        self._process_chapters()
+        self._process_read_info()
+        return self.book

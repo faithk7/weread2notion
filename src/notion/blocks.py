@@ -21,6 +21,10 @@ COLOR_STYLES = {
 }
 
 
+class NotionBlock:
+    pass
+
+
 @dataclass
 class NotionBlockBuilder:
     """Builder class for Notion blocks"""
