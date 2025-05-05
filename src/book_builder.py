@@ -7,30 +7,61 @@ from weread import WeReadClient
 logger = logging.getLogger(__name__)
 
 
-# NOTE: we are going to return a book object here
 class BookBuilder:
-    def __init__(self, client: WeReadClient, data: dict):
+    def __init__(self, client: WeReadClient):
+        # Initialize only with the client
         self.client = client
-        self.book = self._create_book_from_json(data)
+        # Internal state for fetched data, reset per build
         self._info: Optional[Dict] = None
         self._reviews_raw: Optional[List[Dict]] = None
         self._bookmarks_raw: Optional[List[Dict]] = None
         self._chapters_raw: Optional[List[Dict]] = None
         self._read_info: Optional[Dict] = None
+        # The book object being built, specific to a single build call
+        self.book: Optional[Book] = None
 
-    def build(self) -> Book:
+    def build(self, data: dict) -> Optional[Book]:
         """Constructs the book object with fetched data."""
-        self._process_book_info()
-        self._process_reviews()
-        self._process_bookmarks()
-        self._process_chapters()
-        self._process_read_info()
-        return self.book
+        # Reset internal state for this build
+        self._info = None
+        self._reviews_raw = None
+        self._bookmarks_raw = None
+        self._chapters_raw = None
+        self._read_info = None
 
-    @staticmethod
-    def _create_book_from_json(data: dict) -> "Book":
+        # Create the base book object for this build
+        self.book = self._create_book_from_json(data)
+        if not self.book or not self.book.bookId:
+            logger.error("Failed to create base book object from data.")
+            return None
+
+        # Fetch and process data for this book
+        try:
+            self.fetch_all()
+            self._process_book_info()
+            self._process_reviews()
+            self._process_bookmarks()
+            self._process_chapters()
+            self._process_read_info()
+            final_book = self.book
+        except Exception as e:
+            logger.error(
+                f"Error building book {self.book.bookId if self.book else 'unknown'}: {e}"
+            )
+            final_book = None  # Ensure we don't return a partially built book on error
+        finally:
+            # Clean up the book instance for this build cycle
+            self.book = None
+
+        return final_book
+
+    def _create_book_from_json(self, data: dict) -> Optional[Book]:
         """Creates a base Book object from JSON data."""
         book_data = data.get("book", data)  # Handle both nested and flat JSON
+        bookId = book_data.get("bookId")
+        if not bookId:
+            logger.error("Missing bookId in input data")
+            return None
 
         # Extract category from categories array with a default value
         categories = book_data.get("categories", [])
@@ -42,8 +73,8 @@ class BookBuilder:
             else "未分类"  # Use "未分类" if no categories
         )
 
-        return Book(  # Use the imported Book class
-            bookId=book_data.get("bookId"),
+        return Book(
+            bookId=bookId,
             title=book_data.get("title"),
             author=book_data.get("author"),
             cover=book_data.get("cover"),
@@ -52,28 +83,37 @@ class BookBuilder:
         )
 
     def fetch_book_info(self) -> "BookBuilder":
-        self._info = self.client.get_bookinfo(self.book.bookId)
+        if self.book and self.book.bookId:
+            self._info = self.client.get_bookinfo(self.book.bookId)
         return self
 
     def fetch_reviews(self) -> "BookBuilder":
-        # TODO: check where went wrong with reviews fetching
-        # self._reviews_raw = self.client.get_reviews(self.book.bookId)
-        pass  # Keep commented out until fixed
+        if self.book and self.book.bookId:
+            # TODO: check where went wrong with reviews fetching
+            # self._reviews_raw = self.client.get_reviews(self.book.bookId)
+            pass  # Keep commented out until fixed
         return self
 
     def fetch_bookmarks(self) -> "BookBuilder":
-        self._bookmarks_raw = self.client.get_bookmarks(self.book.bookId)
+        if self.book and self.book.bookId:
+            self._bookmarks_raw = self.client.get_bookmarks(self.book.bookId)
         return self
 
     def fetch_chapters(self) -> "BookBuilder":
-        self._chapters_raw = self.client.get_chapters(self.book.bookId)
+        if self.book and self.book.bookId:
+            self._chapters_raw = self.client.get_chapters(self.book.bookId)
         return self
 
     def fetch_read_info(self) -> "BookBuilder":
-        self._read_info = self.client.get_readinfo(self.book.bookId)
+        if self.book and self.book.bookId:
+            self._read_info = self.client.get_readinfo(self.book.bookId)
         return self
 
     def fetch_all(self) -> "BookBuilder":
+        # Ensure book exists before fetching
+        if not self.book or not self.book.bookId:
+            logger.error("Cannot fetch data without a valid book instance.")
+            return self
         self.fetch_book_info()
         self.fetch_reviews()
         self.fetch_bookmarks()
@@ -82,12 +122,12 @@ class BookBuilder:
         return self
 
     def _process_book_info(self):
-        if self._info:
+        if self.book and self._info:
             self.book.isbn = self._info.get("isbn", "")
             self.book.rating = self._info.get("newRating", 0) / 1000
 
     def _process_reviews(self):
-        if self._reviews_raw:
+        if self.book and self._reviews_raw:
             reviews_list = self._reviews_raw
             self.book.summary = list(
                 filter(lambda x: x.get("review", {}).get("type") == 4, reviews_list)
@@ -103,7 +143,7 @@ class BookBuilder:
             )
 
     def _process_bookmarks(self):
-        if self._bookmarks_raw:
+        if self.book and self._bookmarks_raw:
             updated = self._bookmarks_raw
             self.book.bookmark_list = sorted(
                 updated,
@@ -115,7 +155,7 @@ class BookBuilder:
             self.book.bookmark_count = len(self.book.bookmark_list)
 
     def _process_chapters(self):
-        if self._chapters_raw:
+        if self.book and self._chapters_raw:
             chapters_list = self._chapters_raw
             self.book.chapters = {
                 chapter.get("chapterUid"): chapter
@@ -128,7 +168,7 @@ class BookBuilder:
                 )
 
     def _process_read_info(self):
-        if self._read_info:
+        if self.book and self._read_info:
             data = self._read_info
             marked_status = data.get("markedStatus", 0)
             self.book.status = "读完" if marked_status == 4 else "在读"

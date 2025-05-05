@@ -3,6 +3,7 @@ import random
 from datetime import datetime
 from typing import Any, Dict, List, Tuple
 
+from book import Book  # Import only Book here
 from book_builder import BookBuilder
 from logger import logger
 from notion import NotionManager
@@ -29,7 +30,7 @@ def process_books(
     books_json_list: List[Dict[str, Any]],
     latest_sort: int,
     notion_manager: NotionManager,
-    weread_client: WeReadClient,
+    builder: BookBuilder,  # Pass the builder instance
 ) -> None:
     """Process a list of books and sync them to Notion"""
     for book_json in books_json_list:
@@ -39,8 +40,15 @@ def process_books(
                 logger.info(f"Skipping book with sort {current_sort} <= {latest_sort}")
                 continue
 
-            builder = BookBuilder(weread_client, book_json)
-            book = builder.fetch_all().build()
+            # Call the build method on the single builder instance
+            book = builder.build(book_json)
+
+            # Check if build was successful before proceeding
+            if not book:
+                logger.error(
+                    f"Failed to build book object for: {book_json.get('book', {}).get('title')}"
+                )
+                continue
 
             logger.info(f"Processing book: {book.bookId} - {book.title} - {book.isbn}")
 
@@ -51,8 +59,9 @@ def process_books(
                 logger.error(f"Failed to process book: {book.title}")
 
         except Exception as e:
+            # Log general exceptions during processing loop
             logger.error(
-                f"Error processing book {book_json.get('book', {}).get('title')}: {e}"
+                f"Unhandled error processing book data {book_json.get('book', {}).get('title')}: {e}"
             )
 
 
@@ -63,6 +72,8 @@ def main() -> None:
     # Initialize services
     notion_manager = NotionManager.create(notion_token, database_id)
     weread_client = WeReadClient(weread_cookie)
+    # Create the BookBuilder instance once
+    book_builder = BookBuilder(weread_client)
 
     # Get latest sort value from Notion
     latest_sort = notion_manager.get_latest_sort()
@@ -84,7 +95,8 @@ def main() -> None:
 
     # Process books
     start_time = datetime.now()
-    process_books(books_json_list, latest_sort, notion_manager, weread_client)
+    # Pass the single builder instance to process_books
+    process_books(books_json_list, latest_sort, notion_manager, book_builder)
     logger.info(f"Total processing time: {datetime.now() - start_time}")
 
 
