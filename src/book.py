@@ -26,8 +26,20 @@ class Book:
     chapters: Dict = field(default_factory=dict)
     bookmark_count: int = field(default=0)
 
-    @classmethod
-    def from_json(cls, data: dict) -> "Book":
+
+class BookBuilder:
+    def __init__(self, client: WeReadClient, data: dict):
+        self.client = client
+        self.book = self._create_book_from_json(data)
+        self._info: Optional[Dict] = None
+        self._reviews_raw: Optional[List[Dict]] = None
+        self._bookmarks_raw: Optional[List[Dict]] = None
+        self._chapters_raw: Optional[List[Dict]] = None
+        self._read_info: Optional[Dict] = None
+
+    @staticmethod
+    def _create_book_from_json(data: dict) -> "Book":
+        """Creates a base Book object from JSON data."""
         book_data = data.get("book", data)  # Handle both nested and flat JSON
 
         # Extract category from categories array with a default value
@@ -40,7 +52,7 @@ class Book:
             else "未分类"  # Use "未分类" if no categories
         )
 
-        return cls(
+        return Book(
             bookId=book_data.get("bookId"),
             title=book_data.get("title"),
             author=book_data.get("author"),
@@ -48,17 +60,6 @@ class Book:
             sort=book_data.get("sort"),
             category=category,
         )
-
-
-class BookBuilder:
-    def __init__(self, client: WeReadClient, book: Book):
-        self.client = client
-        self.book = book
-        self._info: Optional[Dict] = None
-        self._reviews_raw: Optional[List[Dict]] = None
-        self._bookmarks_raw: Optional[List[Dict]] = None
-        self._chapters_raw: Optional[List[Dict]] = None
-        self._read_info: Optional[Dict] = None
 
     def fetch_book_info(self) -> "BookBuilder":
         self._info = self.client.get_bookinfo(self.book.bookId)
