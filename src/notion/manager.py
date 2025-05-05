@@ -41,10 +41,8 @@ class NotionManager:
                 logger.error(f"Failed to create Notion page for book: {book.title}")
                 return None
 
-            # Build the content using the renamed builder
-            children, grandchild = self.content_builder.build_book_content(
-                book.chapters, book.summary, book.bookmark_list
-            )
+            # Build the content using the book object
+            children, grandchild = self.content_builder.build_book_content(book)
 
             # Add the content only after we create the page
             if children:

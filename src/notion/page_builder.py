@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional, Tuple
 
+from book import Book
 from logger import logger
 from notion.blocks import BlockDict, NotionBlockBuilder
 
@@ -11,26 +12,29 @@ class PageContentBuilder:
         self.block_builder = block_builder
 
     def build_book_content(
-        self,
-        chapter: Optional[Dict[int, Dict]],
-        summary: List[Dict],
-        bookmark_list: List[Dict],
+        self, book: Book
     ) -> Tuple[List[BlockDict], Dict[int, BlockDict]]:
         """Builds the complete content structure for a book page"""
         children = []
         grandchild = {}
 
-        if chapter is not None:
+        chapter = book.chapters
+        summary = book.summary
+        bookmark_list = book.bookmark_list
+
+        if chapter:
             self._add_table_of_contents(children)
             self._add_chapter_content(children, grandchild, chapter, bookmark_list)
-        else:
+        elif bookmark_list:
             self._add_bookmarks(children, bookmark_list)
 
         if summary:
             self._add_summary(children, summary)
 
-        logger.info(f"Children: {children}")
-        logger.info(f"Grandchild: {grandchild}")
+        logger.info(f"Children generated for {book.title}: {len(children)} blocks")
+        logger.info(
+            f"Grandchildren generated for {book.title}: {len(grandchild)} blocks"
+        )
         return children, grandchild
 
     def _add_table_of_contents(self, children: List[BlockDict]) -> None:
