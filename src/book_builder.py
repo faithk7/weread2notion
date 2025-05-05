@@ -22,45 +22,56 @@ class BookBuilder:
 
     def build(self, data: dict) -> Optional[Book]:
         """Constructs the book object with fetched data."""
-        # Reset internal state for this build
+        self._reset()  # Reset state before starting
+
+        self.book = self._create_book_from_json(data)
+        if not self.book:
+            # Error logged in _create_book_from_json if bookId is missing
+            return None
+
+        try:
+            self._build_steps()  # Execute the build sequence
+            final_book = self.book
+        except Exception as e:
+            logger.error(f"Error during build steps for book {self.book.bookId}: {e}")
+            final_book = None
+        finally:
+            # Ensure self.book is cleared even if build steps succeed
+            # The final book object is held in final_book
+            self.book = None
+
+        return final_book
+
+    def _reset(self) -> None:
+        """Resets the internal state of the builder for a new build."""
         self._info = None
         self._reviews_raw = None
         self._bookmarks_raw = None
         self._chapters_raw = None
         self._read_info = None
+        self.book = None
 
-        # Create the base book object for this build
-        self.book = self._create_book_from_json(data)
+    def _build_steps(self) -> None:
+        """Executes the core fetching and processing steps for building the book."""
         if not self.book or not self.book.bookId:
-            logger.error("Failed to create base book object from data.")
-            return None
-
-        # Fetch and process data for this book
-        try:
-            self.fetch_all()
-            self._process_book_info()
-            self._process_reviews()
-            self._process_bookmarks()
-            self._process_chapters()
-            self._process_read_info()
-            final_book = self.book
-        except Exception as e:
-            logger.error(
-                f"Error building book {self.book.bookId if self.book else 'unknown'}: {e}"
+            logger.error("Attempted build steps without a valid base book.")
+            raise ValueError(
+                "Cannot execute build steps without a valid book instance."
             )
-            final_book = None  # Ensure we don't return a partially built book on error
-        finally:
-            # Clean up the book instance for this build cycle
-            self.book = None
 
-        return final_book
+        self._fetch_all()
+        self._process_book_info()
+        self._process_reviews()
+        self._process_bookmarks()
+        self._process_chapters()
+        self._process_read_info()
 
     def _create_book_from_json(self, data: dict) -> Optional[Book]:
         """Creates a base Book object from JSON data."""
         book_data = data.get("book", data)  # Handle both nested and flat JSON
         bookId = book_data.get("bookId")
         if not bookId:
-            logger.error("Missing bookId in input data")
+            logger.error("Missing bookId in input data for _create_book_from_json")
             return None
 
         # Extract category from categories array with a default value
@@ -82,43 +93,46 @@ class BookBuilder:
             category=category,
         )
 
-    def fetch_book_info(self) -> "BookBuilder":
+    def _fetch_book_info(self) -> "BookBuilder":
         if self.book and self.book.bookId:
             self._info = self.client.get_bookinfo(self.book.bookId)
         return self
 
-    def fetch_reviews(self) -> "BookBuilder":
+    def _fetch_reviews(self) -> "BookBuilder":
         if self.book and self.book.bookId:
             # TODO: check where went wrong with reviews fetching
             # self._reviews_raw = self.client.get_reviews(self.book.bookId)
             pass  # Keep commented out until fixed
         return self
 
-    def fetch_bookmarks(self) -> "BookBuilder":
+    def _fetch_bookmarks(self) -> "BookBuilder":
         if self.book and self.book.bookId:
             self._bookmarks_raw = self.client.get_bookmarks(self.book.bookId)
         return self
 
-    def fetch_chapters(self) -> "BookBuilder":
+    def _fetch_chapters(self) -> "BookBuilder":
         if self.book and self.book.bookId:
             self._chapters_raw = self.client.get_chapters(self.book.bookId)
         return self
 
-    def fetch_read_info(self) -> "BookBuilder":
+    def _fetch_read_info(self) -> "BookBuilder":
         if self.book and self.book.bookId:
             self._read_info = self.client.get_readinfo(self.book.bookId)
         return self
 
-    def fetch_all(self) -> "BookBuilder":
+    def _fetch_all(self) -> "BookBuilder":
         # Ensure book exists before fetching
         if not self.book or not self.book.bookId:
-            logger.error("Cannot fetch data without a valid book instance.")
-            return self
-        self.fetch_book_info()
-        self.fetch_reviews()
-        self.fetch_bookmarks()
-        self.fetch_chapters()
-        self.fetch_read_info()
+            logger.error(
+                "Cannot fetch data without a valid book instance during fetch_all."
+            )
+            # Optionally raise an error or just return self
+            return self  # Return self to maintain chainability, but log the error
+        self._fetch_book_info()
+        self._fetch_reviews()
+        self._fetch_bookmarks()
+        self._fetch_chapters()
+        self._fetch_read_info()
         return self
 
     def _process_book_info(self):
