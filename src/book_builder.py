@@ -7,6 +7,7 @@ from weread import WeReadClient
 logger = logging.getLogger(__name__)
 
 
+# NOTE: we are going to return a book object here
 class BookBuilder:
     def __init__(self, client: WeReadClient, data: dict):
         self.client = client
@@ -16,6 +17,15 @@ class BookBuilder:
         self._bookmarks_raw: Optional[List[Dict]] = None
         self._chapters_raw: Optional[List[Dict]] = None
         self._read_info: Optional[Dict] = None
+
+    def build(self) -> Book:
+        """Constructs the book object with fetched data."""
+        self._process_book_info()
+        self._process_reviews()
+        self._process_bookmarks()
+        self._process_chapters()
+        self._process_read_info()
+        return self.book
 
     @staticmethod
     def _create_book_from_json(data: dict) -> "Book":
@@ -124,12 +134,3 @@ class BookBuilder:
             self.book.status = "读完" if marked_status == 4 else "在读"
             self.book.reading_time = data.get("readingTime", 0)
             self.book.finished_date = data.get("finishedDate")
-
-    def build(self) -> Book:
-        """Constructs the book object with fetched data."""
-        self._process_book_info()
-        self._process_reviews()
-        self._process_bookmarks()
-        self._process_chapters()
-        self._process_read_info()
-        return self.book
