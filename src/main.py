@@ -3,7 +3,7 @@ import random
 from datetime import datetime
 from typing import Any, Dict, List, Tuple
 
-from book import Book, BookBuilder
+from book_builder import BookBuilder
 from logger import logger
 from notion import NotionManager
 from weread import WeReadClient
