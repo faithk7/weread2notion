@@ -2,14 +2,23 @@ from typing import Dict, List, Optional, Tuple
 
 from book import Book
 from logger import logger
-from notion.blocks import BlockDict, NotionBlockBuilder
+
+# Import the new concrete block classes
+from notion.blocks import (
+    BlockDict,
+    CalloutBlock,
+    HeadingBlock,
+    QuoteBlock,
+    TableOfContentsBlock,
+)
 
 
 class PageContentBuilder:
     """Builds the content structure for a Notion page (specifically for a book)"""
 
-    def __init__(self, block_builder: NotionBlockBuilder):
-        self.block_builder = block_builder
+    # Removed block_builder from init as it's no longer needed
+    def __init__(self):
+        pass
 
     def build_book_content(
         self, book: Book
@@ -38,8 +47,9 @@ class PageContentBuilder:
         return children, grandchild
 
     def _add_table_of_contents(self, children: List[BlockDict]) -> None:
-        children.append(self.block_builder.heading(1, "目录"))
-        children.append(self.block_builder.table_of_contents())
+        # Instantiate block directly and call to_dict()
+        children.append(HeadingBlock(level=1, content="目录").to_dict())
+        children.append(TableOfContentsBlock().to_dict())
 
     def _add_chapter_content(
         self,
@@ -61,29 +71,36 @@ class PageContentBuilder:
         self, children: List[BlockDict], bookmark_list: List[Dict]
     ) -> None:
         for bookmark in bookmark_list:
+            # Instantiate CalloutBlock directly
             children.append(
-                self.block_builder.callout(
-                    bookmark.get("markText"),
-                    bookmark.get("style"),
-                    bookmark.get("colorStyle"),
-                    bookmark.get("reviewId"),
-                )
+                CalloutBlock(
+                    content=bookmark.get("markText", ""),  # Provide default for content
+                    style=bookmark.get("style"),
+                    color_style=bookmark.get("colorStyle"),
+                    review_id=bookmark.get("reviewId"),
+                ).to_dict()
             )
 
     def _add_summary(self, children: List[BlockDict], summary: List[Dict]) -> None:
-        children.append(self.block_builder.heading(1, "点评"))
+        # Instantiate HeadingBlock directly
+        children.append(HeadingBlock(level=1, content="点评").to_dict())
         for review in summary:
+            review_data = review.get("review", {})
+            # Instantiate CalloutBlock directly
             children.append(
-                self.block_builder.callout(
-                    review.get("review", {}).get("content"),
-                    review.get("style"),
-                    review.get("colorStyle"),
-                    review.get("review", {}).get("reviewId"),
-                )
+                CalloutBlock(
+                    content=review_data.get("content", ""),  # Provide default
+                    style=review.get("style"),  # Style might be on the outer dict
+                    color_style=review.get(
+                        "colorStyle"
+                    ),  # colorStyle might be on the outer dict
+                    review_id=review_data.get("reviewId"),
+                ).to_dict()
             )
 
     @staticmethod
     def _group_bookmarks_by_chapter(bookmark_list: List[Dict]) -> Dict[int, List[Dict]]:
+        # This method remains the same as it doesn't involve block creation
         grouped = {}
         for bookmark in bookmark_list:
             chapter_id = bookmark.get("chapterUid", 1)
@@ -96,9 +113,11 @@ class PageContentBuilder:
         self, chapter: Dict[int, Dict], chapter_id: int
     ) -> BlockDict:
         chapter_info = chapter[chapter_id]
-        return self.block_builder.heading(
-            chapter_info.get("level", 1), chapter_info.get("title", "")
-        )
+        # Instantiate HeadingBlock directly
+        return HeadingBlock(
+            level=chapter_info.get("level", 1),
+            content=chapter_info.get("title", ""),  # Provide default
+        ).to_dict()
 
     def _add_bookmark_with_abstract(
         self,
@@ -106,13 +125,15 @@ class PageContentBuilder:
         grandchild: Dict[int, BlockDict],
         bookmark: Dict,
     ) -> None:
-        callout = self.block_builder.callout(
-            bookmark.get("markText"),
-            bookmark.get("style"),
-            bookmark.get("colorStyle"),
-            bookmark.get("reviewId"),
+        # Instantiate CalloutBlock directly
+        callout_block = CalloutBlock(
+            content=bookmark.get("markText", ""),  # Provide default
+            style=bookmark.get("style"),
+            color_style=bookmark.get("colorStyle"),
+            review_id=bookmark.get("reviewId"),
         )
-        children.append(callout)
+        children.append(callout_block.to_dict())
 
         if abstract := bookmark.get("abstract"):
-            grandchild[len(children) - 1] = self.block_builder.quote(abstract)
+            # Instantiate QuoteBlock directly
+            grandchild[len(children) - 1] = QuoteBlock(content=abstract).to_dict()

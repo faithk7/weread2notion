@@ -1,74 +1,111 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, Optional, TypeAlias
+from typing import Dict, List, Optional, TypeAlias, Union
 
-BlockDict: TypeAlias = Dict[str, any]
+# Type Alias for the dictionary structure expected by the Notion API for blocks
+BlockDict: TypeAlias = Dict
 
-# Constants for styling
-STYLE_EMOJIS = {
-    0: "💡",  # Direct line
-    1: "⭐",  # Background color
-    2: "🌟",  # Wavy line
-    None: "✍️",  # Note
+
+STYLE_EMOJIS: Dict[Optional[int], str] = {
+    0: "💡",  # Thought
+    1: "❞",  # Quote - Though Notion has a dedicated quote block
+    2: "⭐",  # Highlight
+    3: "📖",  # Chapter/Heading reference?
+    None: "✍️",  # Default/Note
 }
 
-COLOR_STYLES = {
+COLOR_STYLES: Dict[Optional[int], str] = {
     1: "red",
     2: "purple",
     3: "blue",
     4: "green",
     5: "yellow",
-    None: "default",
+    None: "default",  # Added default for safety
 }
 
+# --- Abstract Base Class --- #
 
-class NotionBlock:
-    pass
+
+class NotionBlock(ABC):
+    """Abstract base class for all Notion blocks."""
+
+    @abstractmethod
+    def to_dict(self) -> BlockDict:
+        """Converts the block object into its dictionary representation for the Notion API."""
+        pass
+
+
+# --- Concrete Block Classes --- #
 
 
 @dataclass
-class NotionBlockBuilder:
-    """Builder class for Notion blocks"""
+class TableOfContentsBlock(NotionBlock):
+    """Represents a Table of Contents block."""
 
-    @staticmethod
-    def table_of_contents() -> BlockDict:
-        return {"type": "table_of_contents", "table_of_contents": {"color": "default"}}
+    color: str = "default"
 
-    @staticmethod
-    def heading(level: int, content: str) -> BlockDict:
-        heading_type = f"heading_{min(level, 3)}"
+    def to_dict(self) -> BlockDict:
+        return {"type": "table_of_contents", "table_of_contents": {"color": self.color}}
+
+
+@dataclass
+class HeadingBlock(NotionBlock):
+    """Represents a Heading block (levels 1, 2, or 3)."""
+
+    level: int
+    content: str
+    color: str = "default"
+    is_toggleable: bool = False
+
+    def to_dict(self) -> BlockDict:
+        heading_type = f"heading_{min(self.level, 3)}"  # Ensure level is 1, 2, or 3
         return {
             "type": heading_type,
             heading_type: {
-                "rich_text": [{"type": "text", "text": {"content": content}}],
-                "color": "default",
-                "is_toggleable": False,
+                "rich_text": [{"type": "text", "text": {"content": self.content}}],
+                "color": self.color,
+                "is_toggleable": self.is_toggleable,
             },
         }
 
-    @staticmethod
-    def quote(content: str) -> BlockDict:
+
+@dataclass
+class QuoteBlock(NotionBlock):
+    """Represents a Quote block."""
+
+    content: str
+    color: str = "default"
+
+    def to_dict(self) -> BlockDict:
         return {
             "type": "quote",
             "quote": {
-                "rich_text": [{"type": "text", "text": {"content": content}}],
-                "color": "default",
+                "rich_text": [{"type": "text", "text": {"content": self.content}}],
+                "color": self.color,
             },
         }
 
-    @staticmethod
-    def callout(
-        content: str,
-        style: Optional[int] = None,
-        color_style: Optional[int] = None,
-        review_id: Optional[str] = None,
-    ) -> BlockDict:
-        emoji = STYLE_EMOJIS.get(None if review_id is not None else style, "🌟")
-        color = COLOR_STYLES.get(color_style, "default")
+
+@dataclass
+class CalloutBlock(NotionBlock):
+    """Represents a Callout block."""
+
+    content: str
+    style: Optional[int] = None
+    color_style: Optional[int] = None
+    review_id: Optional[str] = None  # If review_id exists, style is ignored for emoji
+
+    def to_dict(self) -> BlockDict:
+        # Determine emoji: Use specific emoji if it's a review, otherwise use style, default to Note emoji
+        emoji_key = None if self.review_id is not None else self.style
+        emoji = STYLE_EMOJIS.get(emoji_key, STYLE_EMOJIS[None])
+        # Determine color: Use color_style, default to 'default'
+        color = COLOR_STYLES.get(self.color_style, COLOR_STYLES[None])
 
         return {
             "type": "callout",
             "callout": {
-                "rich_text": [{"type": "text", "text": {"content": content}}],
+                "rich_text": [{"type": "text", "text": {"content": self.content}}],
                 "icon": {"emoji": emoji},
                 "color": color,
             },

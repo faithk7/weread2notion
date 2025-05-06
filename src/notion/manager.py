@@ -4,8 +4,8 @@ from typing import Optional
 from book import Book
 from logger import logger
 from notion.block_manager import NotionBlockManager
-from notion.blocks import NotionBlockBuilder
 from notion.database import NotionDatabaseManager
+from notion.page import BookPage
 from notion.page_builder import PageContentBuilder
 
 
@@ -25,7 +25,7 @@ class NotionManager:
         client = Client(auth=notion_token)
         database_manager = NotionDatabaseManager(client, database_id)
         block_manager = NotionBlockManager(client)
-        content_builder = PageContentBuilder(NotionBlockBuilder())
+        content_builder = PageContentBuilder()
 
         return cls(database_manager, block_manager, content_builder)
 
