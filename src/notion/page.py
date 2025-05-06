@@ -3,7 +3,7 @@ from typing import Dict
 
 from book import Book
 
-# Import necessary utility functions used by _build_properties
+# Import necessary utility functions used by _build_notion_property
 from utils import (
     calculate_book_str_id,
     format_reading_time,
@@ -13,7 +13,7 @@ from utils import (
 
 class Page(ABC):
     @abstractmethod
-    def build_property(self) -> Dict:
+    def build_notion_property(self) -> Dict:
         """Abstract method to build the Notion page properties dictionary."""
         pass
 
@@ -22,14 +22,13 @@ class BookPage(Page):
     def __init__(self, book: Book):
         self.book = book
 
-    def build_property(self) -> Dict:
+    def build_notion_property(self) -> Dict:
         """Builds and returns the Notion properties dictionary for the book."""
-        return self._build_properties()
+        return self._build_notion_property()
 
-    def _build_properties(self) -> Dict:
+    def _build_notion_property(self) -> Dict:
         """Creates a dictionary of Notion properties from the book instance."""
-        # Note: This logic uses utility functions imported above
-        properties = {
+        return {
             "BookName": {
                 "title": [{"type": "text", "text": {"content": self.book.title}}]
             },
@@ -85,5 +84,3 @@ class BookPage(Page):
             ),
             "UpdatedTime": format_timestamp_for_notion(),
         }
-
-        return properties
