@@ -9,7 +9,6 @@ from notion_client import Client
 from book import Book
 from book_builder import BookBuilder
 from logger import logger
-from notion.block_manager import NotionBlockManager
 from notion.database import NotionDatabaseManager
 from notion.page_builder import PageContentBuilder
 from weread import WeReadClient
@@ -70,28 +69,22 @@ def process_books(
 def process_book(
     book: Book,
     database_manager: NotionDatabaseManager,
-    block_manager: NotionBlockManager,
     content_builder: PageContentBuilder,
 ) -> Optional[str]:
     """Process a single book by creating a Notion page and adding content."""
     try:
-        # Check and delete existing entry
         database_manager.check_and_delete(book.bookId)
-
-        # Create the page
         page_id = database_manager.create_book_page(book)
         if not page_id:
             logger.error(f"Failed to create Notion page for book: {book.title}")
             return None
 
-        # Build the content using the book object
         children, grandchild = content_builder.build_book_content(book)
 
-        # Add the content only after we create the page
         if children:
-            results = block_manager.add_children(page_id, children)
+            results = database_manager.add_children(page_id, children)
             if results and grandchild:
-                block_manager.add_grandchildren(results, grandchild)
+                database_manager.add_grandchildren(results, grandchild)
         else:
             logger.info(f"No content (children) generated for book: {book.title}")
 
@@ -104,18 +97,19 @@ def process_book(
 def main() -> None:
     weread_cookie, notion_token, database_id, dev_mode = parse_arguments()
 
-    # Initialize services directly
     client = Client(auth=notion_token)
     database_manager = NotionDatabaseManager(client, database_id)
-    block_manager = NotionBlockManager(client)
     content_builder = PageContentBuilder()
 
     weread_client = WeReadClient(weread_cookie)
     book_builder = BookBuilder(weread_client)
 
-    # Get latest sort value from Notion using database_manager directly
     latest_sort = database_manager.get_latest_sort()
     logger.info(f"Latest sort value from Notion: {latest_sort}")
+
+    bound_process_book = functools.partial(
+        process_book, database_manager=database_manager, content_builder=content_builder
+    )
 
     books_json_list = weread_client.get_notebooklist()
     if not books_json_list:
@@ -132,14 +126,6 @@ def main() -> None:
         )
 
     start_time = datetime.now()
-    # Create a bound version of process_book with managers pre-filled
-    bound_process_book = functools.partial(
-        process_book,
-        database_manager=database_manager,
-        block_manager=block_manager,
-        content_builder=content_builder,
-    )
-
     process_books(books_json_list, latest_sort, bound_process_book, book_builder)
     logger.info(f"Total processing time: {datetime.now() - start_time}")
 

@@ -1,13 +1,14 @@
 import time
 from abc import ABC, abstractmethod
 from functools import wraps
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from notion_client import Client
 from notion_client.errors import APIResponseError
 
 from book import Book
 from logger import logger
+from notion.blocks import BlockDict
 from notion.page import BookPage
 
 
@@ -108,6 +109,69 @@ class NotionDatabaseManager:
                     count += 1
         if count > 0:
             logger.info(f"Deleted {count} existing Notion page(s).")
+
+    def add_children(
+        self, page_id: str, children: List[BlockDict]
+    ) -> Optional[List[Dict]]:
+        results = []
+        chunk_size = 50
+
+        for i in range(0, len(children), chunk_size):
+            chunk = children[i : i + chunk_size]
+
+            def append_op(chunk=chunk):
+                return self.client.blocks.children.append(
+                    block_id=page_id, children=chunk
+                )
+
+            if i > 0:
+                time.sleep(0.5)
+
+            response = self._make_request(append_op)
+            if response and "results" in response:
+                results.extend(response["results"])
+            elif not response:
+                logger.error(
+                    f"Failed to add child chunk for page {page_id}. No response."
+                )
+                return None
+
+        if (
+            len(results) > 0
+            and len(results) % chunk_size == 0
+            or len(results) == len(children)
+        ):
+            return results
+        elif len(children) == 0:
+            return []
+        else:
+            logger.warning(
+                f"Potentially incomplete children addition for page {page_id}. Expected {len(children)}, got {len(results)} results."
+            )
+            return None
+
+    def add_grandchildren(
+        self, parent_blocks: List[Dict], grandchildren: Dict[int, BlockDict]
+    ) -> None:
+        for block_index, block_content in grandchildren.items():
+            if block_index >= len(parent_blocks):
+                logger.warning(
+                    f"Grandchild index {block_index} out of bounds for parent_blocks list."
+                )
+                continue
+            block_id = parent_blocks[block_index].get("id")
+            if not block_id:
+                logger.warning(
+                    f"Parent block at index {block_index} has no ID for grandchild addition."
+                )
+                continue
+
+            def append_op(block_id=block_id, block_content=block_content):
+                return self.client.blocks.children.append(
+                    block_id=block_id, children=[block_content]
+                )
+
+            self._make_request(append_op)
 
     @retry()
     def _make_request(self, operation: Callable[[], Any]) -> Any:
