@@ -2,8 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Dict
 
 from book import Book
-
-# Import necessary utility functions used by _build_notion_property
 from utils import (
     calculate_book_str_id,
     format_reading_time,

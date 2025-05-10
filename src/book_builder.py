@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, List, Optional
 
-from book import Book  # Import Book from src/book.py
+from book import Book
 from weread import WeReadClient
 
 logger = logging.getLogger(__name__)

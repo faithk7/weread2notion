@@ -1,9 +1,7 @@
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 from book import Book
 from logger import logger
-
-# Import the new concrete block classes
 from notion.blocks import (
     BlockDict,
     CalloutBlock,

@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, List, Optional, TypeAlias, Union
 
-# Type Alias for the dictionary structure expected by the Notion API for blocks
 BlockDict: TypeAlias = Dict
 
 

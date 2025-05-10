@@ -12,7 +12,6 @@ from requests.utils import cookiejar_from_dict
 
 from logger import logger
 
-# Type Aliases
 CookieDict: TypeAlias = Dict[str, str]
 
 
