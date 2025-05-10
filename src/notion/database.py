@@ -43,6 +43,7 @@ class NotionDatabaseManager:
 
         book_page = BookPage(book)
         properties = book_page.build_property()
+        logger.info(f"Properties: {properties}")
         icon = {"type": "external", "external": {"url": book.cover}}
 
         return self._create_page(properties, icon)

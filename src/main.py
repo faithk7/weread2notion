@@ -88,7 +88,9 @@ def main() -> None:
     # Handle dev mode
     if dev_mode:
         logger.info("Running in dev mode - randomly selecting 30 books")
-        books_json_list = random.sample(books_json_list, min(30, len(books_json_list)))
+        books_json_list = books_json_list[-5:] + random.sample(
+            books_json_list, min(30, len(books_json_list))
+        )
         logger.info(
             f"Selected books: {[{'title': book['book']['title'], 'sort': book['sort']} for book in books_json_list]}"
         )
