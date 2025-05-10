@@ -21,7 +21,7 @@ def retry(max_retries: int = 2, initial_delay: float = 1.0):
                     time.sleep(delay)  # Always wait before making a request
                     return func(*args, **kwargs)
                 except APIResponseError as e:
-                    logger.error(f"Error: {e}")
+                    logger.error(f"Error in function {func.__name__}: {e}")
                     raise
             return None
 
@@ -40,8 +40,11 @@ class NotionDatabaseManager:
     def create_book_page(self, book: Book) -> Optional[str]:
         """Creates a new page for a book in the database"""
         logger.info(f"Creating page for book: {book.title} with ID: {book.bookId}")
-
-        book_page = BookPage(book)
+        try:
+            book_page = BookPage(book)
+        except Exception as e:
+            logger.error(f"Error in function create_book_page: {e}")
+            return None
         properties = book_page.build_property()
         logger.info(f"Properties: {properties}")
         icon = {"type": "external", "external": {"url": book.cover}}
