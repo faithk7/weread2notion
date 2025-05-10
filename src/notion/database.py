@@ -40,13 +40,8 @@ class NotionDatabaseManager:
     def create_book_page(self, book: Book) -> Optional[str]:
         """Creates a new page for a book in the database"""
         logger.info(f"Creating page for book: {book.title} with ID: {book.bookId}")
-        try:
-            book_page = BookPage(book)
-        except Exception as e:
-            logger.error(f"Error in function create_book_page: {e}")
-            return None
-        properties = book_page.build_property()
-        logger.info(f"Properties: {properties}")
+        book_page = BookPage(book)
+        properties = book_page.build_notion_property()
         icon = {"type": "external", "external": {"url": book.cover}}
 
         return self._create_page(properties, icon)
