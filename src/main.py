@@ -1,7 +1,8 @@
 import argparse
+import functools
 import random
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from notion_client import Client
 
@@ -33,9 +34,7 @@ def parse_arguments() -> Tuple[str, str, str, bool]:
 def process_books(
     books_json_list: List[Dict[str, Any]],
     latest_sort: int,
-    database_manager: NotionDatabaseManager,
-    block_manager: NotionBlockManager,
-    content_builder: PageContentBuilder,
+    book_processor: Callable[[Book], Optional[str]],
     builder: BookBuilder,
 ) -> None:
     """Process a list of books and sync them to Notion"""
@@ -56,9 +55,7 @@ def process_books(
 
             logger.info(f"Processing book: {book.bookId} - {book.title} - {book.isbn}")
 
-            page_id = process_book(
-                book, database_manager, block_manager, content_builder
-            )
+            page_id = book_processor(book)
             if page_id:
                 logger.info(f"Successfully processed book: {book.title}")
             else:
@@ -135,14 +132,15 @@ def main() -> None:
         )
 
     start_time = datetime.now()
-    process_books(
-        books_json_list,
-        latest_sort,
-        database_manager,
-        block_manager,
-        content_builder,
-        book_builder,
+    # Create a bound version of process_book with managers pre-filled
+    bound_process_book = functools.partial(
+        process_book,
+        database_manager=database_manager,
+        block_manager=block_manager,
+        content_builder=content_builder,
     )
+
+    process_books(books_json_list, latest_sort, bound_process_book, book_builder)
     logger.info(f"Total processing time: {datetime.now() - start_time}")
 
 
