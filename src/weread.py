@@ -3,6 +3,17 @@ from typing import Any, Dict, List, Optional
 import requests
 
 from constants import (
+    BOOKS_KEY,
+    CHAPTERS_KEY,
+    LOG_PREFIX_BOOK_INFO,
+    LOG_PREFIX_BOOKMARKS,
+    LOG_PREFIX_CHAPTER_INFO,
+    LOG_PREFIX_CONNECTION_TEST,
+    LOG_PREFIX_NOTEBOOK_LIST,
+    LOG_PREFIX_READ_INFO,
+    LOG_PREFIX_REVIEWS,
+    REVIEWS_KEY,
+    SORT_KEY,
     UPDATED_KEY,
     WEREAD_BOOK_INFO,
     WEREAD_BOOKMARKLIST_URL,
@@ -30,7 +41,7 @@ class WeReadClient:
         try:
             # Use _fetch for the connection test
             response_data = self._fetch(
-                WEREAD_NOTEBOOKS_URL, log_prefix="connection test"
+                WEREAD_NOTEBOOKS_URL, log_prefix=LOG_PREFIX_CONNECTION_TEST
             )
             if response_data is not None:
                 self.is_valid = True
@@ -84,7 +95,7 @@ class WeReadClient:
         return self._fetch(
             WEREAD_BOOK_INFO,
             params={"bookId": book_id},
-            log_prefix=f"book info for {book_id}",
+            log_prefix=f"{LOG_PREFIX_BOOK_INFO} {book_id}",
         )
 
     def get_readinfo(self, book_id: str) -> Optional[Dict]:
@@ -93,7 +104,7 @@ class WeReadClient:
             params=dict(
                 bookId=book_id, readingDetail=1, readingBookIndex=1, finishedDate=1
             ),
-            log_prefix=f"read info for {book_id}",
+            log_prefix=f"{LOG_PREFIX_READ_INFO} {book_id}",
         )
 
     def get_reviews(self, book_id: str) -> List[Dict]:
@@ -101,8 +112,8 @@ class WeReadClient:
             self._fetch(
                 WEREAD_REVIEW_LIST_URL,
                 params=dict(bookId=book_id, listType=11, mine=1, syncKey=0),
-                log_prefix=f"reviews for {book_id}",
-            )["reviews"]
+                log_prefix=f"{LOG_PREFIX_REVIEWS} {book_id}",
+            )[REVIEWS_KEY]
             or []
         )
 
@@ -110,7 +121,7 @@ class WeReadClient:
         bookmarks_list = self._fetch(
             WEREAD_BOOKMARKLIST_URL,
             params=dict(bookId=book_id),
-            log_prefix=f"bookmarks for {book_id}",
+            log_prefix=f"{LOG_PREFIX_BOOKMARKS} {book_id}",
             expected_keys=[UPDATED_KEY],
         ).get(UPDATED_KEY, [])
 
@@ -126,9 +137,9 @@ class WeReadClient:
         chapter_list = self._fetch(
             WEREAD_CHAPTER_INFO,
             params={"bookId": book_id},
-            log_prefix=f"chapter info for book {book_id}",
-            expected_keys=["chapters"],  # Expect 'chapters' key
-        ).get("chapters", [])
+            log_prefix=f"{LOG_PREFIX_CHAPTER_INFO} {book_id}",
+            expected_keys=[CHAPTERS_KEY],  # Expect 'chapters' key
+        ).get(CHAPTERS_KEY, [])
 
         if not chapter_list:
             logger.warning(f"No chapters found for {book_id}")
@@ -145,17 +156,17 @@ class WeReadClient:
     def get_notebooklist(self) -> List[Dict]:
         """获取笔记本列表"""
         notebook_response = self._fetch(
-            WEREAD_NOTEBOOKS_URL, log_prefix="notebook list"
+            WEREAD_NOTEBOOKS_URL, log_prefix=LOG_PREFIX_NOTEBOOK_LIST
         )
         if not notebook_response:
             return []
 
-        books = notebook_response.get("books", [])
+        books = notebook_response.get(BOOKS_KEY, [])
         if not books:
             logger.warning("No books found in notebook list")
             return []
 
         logger.info(f"Found {len(books)} books in notebook list")
         # Sort by the 'sort' key, default to a large number if missing to place them last
-        books.sort(key=lambda x: x.get("sort", float("inf")))
+        books.sort(key=lambda x: x.get(SORT_KEY, float("inf")))
         return books
