@@ -66,29 +66,27 @@ class WeReadClient:
         try:
             response = self.session.request(method, url, params=params, timeout=10)
             response_json = response.json()
+
             # 可选的基本验证，检查期望的键是否存在
-            if expected_keys:
-                if not all(key in response_json for key in expected_keys):
-                    logger.warning(
-                        f"Missing expected keys {expected_keys} in {log_prefix} response from {url}"
-                    )
-                    # 决定这是否应该是硬失败或只是警告
-                    # return None # 如果缺少键应该导致失败，请取消注释
+            if expected_keys and not all(key in response_json for key in expected_keys):
+                logger.warning(
+                    f"Missing expected keys {expected_keys} in {log_prefix} response from {url}"
+                )
+                # 决定这是否应该是硬失败或只是警告
+                # return None # 如果缺少键应该导致失败，请取消注释
+
             return response_json
+
         except requests.exceptions.Timeout:
             logger.error(f"Failed to fetch {log_prefix}: Request timed out.")
-            return None
         except requests.exceptions.JSONDecodeError:
             logger.error(
                 f"Failed to fetch {log_prefix}: Could not decode JSON response. Response: {response.text[:500]}"
             )
-            return None
         except requests.exceptions.RequestException as e:
             logger.error(f"Error fetching {log_prefix}: {e}")
-            return None
         except Exception as e:
             logger.error(f"Unexpected error fetching {log_prefix}: {e}")
-            return None
 
     def get_bookinfo(self, book_id: str) -> Optional[Dict]:
         """获取书籍基本信息
