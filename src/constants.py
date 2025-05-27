@@ -7,3 +7,6 @@ WEREAD_CHAPTER_INFO = (
 WEREAD_READ_PROGRESS_URL = "https://weread.qq.com/web/book/getProgress"
 WEREAD_REVIEW_LIST_URL = "https://weread.qq.com/web/review/list"
 WEREAD_BOOK_INFO = "https://weread.qq.com/api/book/info"
+
+# API Response Keys
+UPDATED_KEY = "updated"

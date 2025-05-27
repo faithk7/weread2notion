@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 import requests
 
 from constants import (
+    UPDATED_KEY,
     WEREAD_BOOK_INFO,
     WEREAD_BOOKMARKLIST_URL,
     WEREAD_CHAPTER_INFO,
@@ -110,10 +111,13 @@ class WeReadClient:
             WEREAD_BOOKMARKLIST_URL,
             params=dict(bookId=book_id),
             log_prefix=f"bookmarks for {book_id}",
-        ).get("updated", [])
+            expected_keys=[UPDATED_KEY],
+        ).get(UPDATED_KEY, [])
 
         if not bookmarks_list:
             logger.warning(f"No bookmarks found for {book_id}")
+        else:
+            logger.info(f"Found {len(bookmarks_list)} bookmarks for {book_id}")
 
         return bookmarks_list
 
