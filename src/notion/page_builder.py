@@ -32,7 +32,8 @@ class PageContentBuilder:
         if chapter:
             self._add_table_of_contents(children)
             self._add_chapter_content(children, grandchild, chapter, bookmark_list)
-        elif bookmark_list:
+
+        if bookmark_list:
             self._add_bookmarks(children, bookmark_list)
 
         if summary:
@@ -57,8 +58,11 @@ class PageContentBuilder:
         bookmark_list: List[Dict],
     ) -> None:
         grouped_bookmarks = self._group_bookmarks_by_chapter(bookmark_list)
+        logger.info(f"Grouped bookmarks: {grouped_bookmarks}")
 
         for chapter_id, bookmarks in grouped_bookmarks.items():
+            logger.info(f"Chapter ID: {chapter_id}")
+            logger.info(f"Bookmarks: {bookmarks}")
             if chapter_id in chapter:
                 children.append(self._create_chapter_heading(chapter, chapter_id))
 
