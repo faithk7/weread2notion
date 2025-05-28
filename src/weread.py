@@ -108,7 +108,9 @@ class WeReadClient:
             响应的JSON数据，如果失败则返回None
         """
         try:
+            logger.info(f"Making {method} request to {url} with params: {params}")
             response = self.session.request(method, url, params=params, timeout=10)
+            logger.info(f"Response status code: {response.status_code}")
 
             # 检查是否是认证错误（401, 403等）
             if (
@@ -128,8 +130,25 @@ class WeReadClient:
                     logger.error("Cookie刷新失败，无法继续请求")
                     return None
 
+            # Check if response is successful
+            if response.status_code != 200:
+                logger.error(
+                    f"HTTP error {response.status_code} for {log_prefix}: {response.text[:500]}"
+                )
+                return None
+
             response_json = response.json()
             logger.info(f"Response: {response_json}")
+
+            # Check for WeRead API error codes
+            if isinstance(response_json, dict) and "errCode" in response_json:
+                err_code = response_json.get("errCode")
+                err_msg = response_json.get("errMsg", "Unknown error")
+                if err_code != 0:  # 0 usually means success in WeRead API
+                    logger.error(
+                        f"WeRead API error for {log_prefix}: errCode={err_code}, errMsg={err_msg}"
+                    )
+                    return None
 
             # 可选的基本验证，检查期望的键是否存在
             if expected_keys and not all(key in response_json for key in expected_keys):
@@ -143,14 +162,18 @@ class WeReadClient:
 
         except requests.exceptions.Timeout:
             logger.error(f"Failed to fetch {log_prefix}: Request timed out.")
+            return None
         except requests.exceptions.JSONDecodeError:
             logger.error(
                 f"Failed to fetch {log_prefix}: Could not decode JSON response. Response: {response.text[:500]}"
             )
+            return None
         except requests.exceptions.RequestException as e:
             logger.error(f"Error fetching {log_prefix}: {e}")
+            return None
         except Exception as e:
             logger.error(f"Unexpected error fetching {log_prefix}: {e}")
+            return None
 
     def get_bookinfo(self, book_id: str) -> Optional[Dict]:
         """获取书籍基本信息
@@ -193,12 +216,11 @@ class WeReadClient:
         Returns:
             书评列表
         """
-        result = self._fetch(
+        return self._fetch(
             WEREAD_REVIEW_LIST_URL,
             params=dict(bookId=book_id, listType=11, mine=1, syncKey=0),
             log_prefix=f"{LOG_PREFIX_REVIEWS} {book_id}",
-        )
-        return result[REVIEWS_KEY] if result else []
+        ).get(REVIEWS_KEY, [])
 
     def get_bookmarks(self, book_id: str) -> List[Dict]:
         """获取书籍的书签/划线列表

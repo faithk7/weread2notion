@@ -96,22 +96,36 @@ def process_book(
 
 def _sanity_check_weread_api(weread_client: WeReadClient) -> None:
     """Sanity check the WeRead API"""
-    logger.info("Sanity checking the WeRead API")
+    logger.info("🧪 Sanity checking the WeRead API")
     book_id = "41949197"  # Using the book ID you originally requested
 
-    # Test reviews first (as originally requested)
-    logger.info(f"Testing get_reviews for book {book_id}")
-    reviews = weread_client.get_reviews(book_id)
-    logger.info(f"Reviews: {reviews}")
-
-    # Test other endpoints
-    logger.info(f"Testing get_bookinfo for book {book_id}")
+    # Test bookinfo first (this works)
+    logger.info(f"📚 Testing get_bookinfo for book {book_id}")
     book_info = weread_client.get_bookinfo(book_id)
-    logger.info(f"Book info: {book_info}")
+    if book_info:
+        logger.info(
+            f"✅ Book info success: {book_info.get('title', 'No title')} by {book_info.get('author', 'Unknown author')}"
+        )
+    else:
+        logger.error("❌ Book info failed")
 
-    logger.info(f"Testing get_bookmarks for book {book_id}")
+    # Test bookmarks (this fails)
+    logger.info(f"🔖 Testing get_bookmarks for book {book_id}")
     bookmarks = weread_client.get_bookmarks(book_id)
-    logger.info(f"Bookmarks: {bookmarks}")
+    if bookmarks:
+        logger.info(f"✅ Bookmarks success: Found {len(bookmarks)} bookmarks")
+        if bookmarks:
+            logger.info(f"📝 First bookmark preview: {bookmarks[0]}")
+    else:
+        logger.error("❌ Bookmarks failed - returned None or empty")
+
+    # Test reviews
+    logger.info(f"📖 Testing get_reviews for book {book_id}")
+    reviews = weread_client.get_reviews(book_id)
+    if reviews:
+        logger.info(f"✅ Reviews success: Found {len(reviews)} reviews")
+    else:
+        logger.error("❌ Reviews failed - returned None or empty")
 
 
 def main() -> None:
