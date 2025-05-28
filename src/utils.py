@@ -104,7 +104,6 @@ def parse_cookie_string(cookie_string: str) -> Optional[RequestsCookieJar]:
         return cookiejar_from_dict(cookies_dict, cookiejar=None, overwrite=True)
     except Exception as e:
         logger.error(f"Failed to parse cookie string: {str(e)}")
-        return None
 
 
 def format_reading_time(reading_time: int) -> str:

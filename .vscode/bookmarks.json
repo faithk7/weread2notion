@@ -1,0 +1,24 @@
+{
+	"files": [
+		{
+			"path": "src/main.py",
+			"bookmarks": [
+				{
+					"line": 29,
+					"column": 45,
+					"label": ""
+				}
+			]
+		},
+		{
+			"path": "dev.sh",
+			"bookmarks": [
+				{
+					"line": 4,
+					"column": 9,
+					"label": ""
+				}
+			]
+		}
+	]
+}
