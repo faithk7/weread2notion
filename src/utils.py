@@ -6,9 +6,8 @@ from datetime import datetime
 from http.cookies import SimpleCookie
 from typing import Dict, List, Optional, Tuple, TypeAlias
 
+import httpx
 from pytz import timezone
-from requests.cookies import RequestsCookieJar
-from requests.utils import cookiejar_from_dict
 
 from logger import logger
 
@@ -82,14 +81,14 @@ def calculate_book_str_id(book_id: str) -> str:
     return result
 
 
-def parse_cookie_string(cookie_string: str) -> Optional[RequestsCookieJar]:
-    """Parse a cookie string into a RequestsCookieJar.
+def parse_cookie_string(cookie_string: str) -> Optional[httpx.Cookies]:
+    """Parse a cookie string into httpx.Cookies.
 
     Args:
         cookie_string: Raw cookie string from browser.
 
     Returns:
-        RequestsCookieJar object or None if parsing fails.
+        httpx.Cookies object or None if parsing fails.
 
     Raises:
         ValueError: If cookie_string is empty or malformed.
@@ -101,9 +100,10 @@ def parse_cookie_string(cookie_string: str) -> Optional[RequestsCookieJar]:
         cookie = SimpleCookie()
         cookie.load(cookie_string)
         cookies_dict = {key: morsel.value for key, morsel in cookie.items()}
-        return cookiejar_from_dict(cookies_dict, cookiejar=None, overwrite=True)
+        return httpx.Cookies(cookies_dict)
     except Exception as e:
         logger.error(f"Failed to parse cookie string: {str(e)}")
+        return None
 
 
 def format_reading_time(reading_time: int) -> str:

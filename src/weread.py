@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 
-import requests
+import httpx
 
 from constants import (
     BOOKS_KEY,
@@ -39,7 +39,7 @@ class WeReadClient:
             weread_cookie: 微信读书的cookie字符串（可选，如果不提供则自动获取）
             auto_refresh_cookie: 是否自动刷新过期的cookie
         """
-        self.session = requests.Session()
+        self.session = httpx.Client()
         self.auto_refresh_cookie = auto_refresh_cookie
         self.cookie_manager = WeReadCookieManager() if auto_refresh_cookie else None
         self.is_valid = False
@@ -160,16 +160,11 @@ class WeReadClient:
 
             return response_json
 
-        except requests.exceptions.Timeout:
+        except httpx.TimeoutException:
             logger.error(f"Failed to fetch {log_prefix}: Request timed out.")
             return None
-        except requests.exceptions.JSONDecodeError:
-            logger.error(
-                f"Failed to fetch {log_prefix}: Could not decode JSON response. Response: {response.text[:500]}"
-            )
-            return None
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error fetching {log_prefix}: {e}")
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error for {log_prefix}: {e}")
             return None
         except Exception as e:
             logger.error(f"Unexpected error fetching {log_prefix}: {e}")
@@ -289,3 +284,16 @@ class WeReadClient:
         except Exception as e:  # 捕获连接逻辑本身的潜在意外错误
             self.is_valid = False
             logger.error(f"An unexpected error occurred during WeRead connection: {e}")
+
+    def __enter__(self):
+        """Context manager entry"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - cleanup resources"""
+        self.close()
+
+    def close(self):
+        """Close the HTTP client session"""
+        if hasattr(self, "session") and self.session:
+            self.session.close()
