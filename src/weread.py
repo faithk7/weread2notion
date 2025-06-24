@@ -8,7 +8,6 @@ from constants import (
     LOG_PREFIX_BOOK_INFO,
     LOG_PREFIX_BOOKMARKS,
     LOG_PREFIX_CHAPTER_INFO,
-    LOG_PREFIX_CONNECTION_TEST,
     LOG_PREFIX_NOTEBOOK_LIST,
     LOG_PREFIX_READ_INFO,
     LOG_PREFIX_REVIEWS,
@@ -21,8 +20,8 @@ from constants import (
     WEREAD_NOTEBOOKS_URL,
     WEREAD_READ_PROGRESS_URL,
     WEREAD_REVIEW_LIST_URL,
+    LOG_PREFIX_try_connectION_TEST,
 )
-from cookie_manager import WeReadCookieManager
 from logger import logger
 from utils import parse_cookie_string
 
@@ -30,32 +29,24 @@ from utils import parse_cookie_string
 class WeReadClient:
     """微信读书客户端类，用于与微信读书API交互"""
 
-    def __init__(
-        self, weread_cookie: Optional[str] = None, auto_refresh_cookie: bool = True
-    ):
+    def __init__(self, weread_cookie: Optional[str] = None):
         """初始化微信读书客户端
 
         Args:
             weread_cookie: 微信读书的cookie字符串（可选，如果不提供则自动获取）
-            auto_refresh_cookie: 是否自动刷新过期的cookie
         """
         self.session = httpx.Client()
-        self.auto_refresh_cookie = auto_refresh_cookie
-        self.cookie_manager = WeReadCookieManager() if auto_refresh_cookie else None
-        self.is_valid = False
+        self._connected = False
 
         # 设置初始cookie
         if weread_cookie:
             self._set_cookies(weread_cookie)
-        elif auto_refresh_cookie:
-            # 尝试获取有效的cookie
-            cookie_string = self.cookie_manager.get_valid_cookie()
-            if cookie_string:
-                self._set_cookies(cookie_string)
+        else:
+            raise ValueError("weread_cookie is required when auto_refresh is disabled")
 
-        self._connect()
+        self._try_connect()
         assert (
-            self.is_valid
+            self._connected
         ), "WeRead client initialization failed. Check cookie validity."
 
     def _set_cookies(self, cookie_string: str) -> None:
@@ -67,23 +58,15 @@ class WeReadClient:
         self.session.cookies = parse_cookie_string(cookie_string)
 
     def _refresh_cookies(self) -> bool:
-        """刷新cookies
+        """刷新cookies (已禁用)
 
         Returns:
-            是否成功刷新
+            总是返回False，因为自动刷新已禁用
         """
-        if not self.auto_refresh_cookie or not self.cookie_manager:
-            return False
-
-        logger.info("尝试刷新Cookie...")
-        new_cookie = self.cookie_manager.get_valid_cookie(force_refresh=True)
-        if new_cookie:
-            self._set_cookies(new_cookie)
-            logger.info("Cookie刷新成功")
-            return True
-        else:
-            logger.error("Cookie刷新失败")
-            return False
+        logger.warning(
+            "Cookie refresh is disabled. Please provide a valid cookie manually."
+        )
+        return False
 
     def _fetch(
         self,
@@ -92,7 +75,6 @@ class WeReadClient:
         method: str = "GET",
         log_prefix: str = "request",
         expected_keys: Optional[List[str]] = None,
-        retry_on_auth_error: bool = True,
     ) -> Optional[Any]:
         """执行HTTP请求并处理常见错误
 
@@ -102,7 +84,6 @@ class WeReadClient:
             method: HTTP方法
             log_prefix: 日志前缀
             expected_keys: 期望的响应键列表
-            retry_on_auth_error: 是否在认证错误时重试
 
         Returns:
             响应的JSON数据，如果失败则返回None
@@ -113,22 +94,11 @@ class WeReadClient:
             logger.info(f"Response status code: {response.status_code}")
 
             # 检查是否是认证错误（401, 403等）
-            if (
-                response.status_code in [401, 403]
-                and retry_on_auth_error
-                and self.auto_refresh_cookie
-            ):
-                logger.warning(
-                    f"认证失败 (状态码: {response.status_code})，尝试刷新Cookie"
+            if response.status_code in [401, 403]:
+                logger.error(
+                    f"认证失败 (状态码: {response.status_code})。请提供有效的Cookie。"
                 )
-                if self._refresh_cookies():
-                    # 重试请求
-                    return self._fetch(
-                        url, params, method, log_prefix, expected_keys, False
-                    )
-                else:
-                    logger.error("Cookie刷新失败，无法继续请求")
-                    return None
+                return None
 
             # Check if response is successful
             if response.status_code != 200:
@@ -266,23 +236,23 @@ class WeReadClient:
         books.sort(key=lambda x: x.get(SORT_KEY, float("inf")))
         return books
 
-    def _connect(self) -> None:
+    def _try_connect(self) -> None:
         """尝试连接到微信读书并验证会话/cookie
 
-        设置self.is_valid标志以指示连接是否成功
+        设置self._connected标志以指示连接是否成功
         """
         try:
             # 使用_fetch进行连接测试
             response_data = self._fetch(
-                WEREAD_NOTEBOOKS_URL, log_prefix=LOG_PREFIX_CONNECTION_TEST
+                WEREAD_NOTEBOOKS_URL, log_prefix=LOG_PREFIX_try_connectION_TEST
             )
             if response_data is not None:
-                self.is_valid = True
+                self._connected = True
                 logger.info("WeRead client connected successfully.")
             else:
-                self.is_valid = False
+                self._connected = False
         except Exception as e:  # 捕获连接逻辑本身的潜在意外错误
-            self.is_valid = False
+            self._connected = False
             logger.error(f"An unexpected error occurred during WeRead connection: {e}")
 
     def __enter__(self):
