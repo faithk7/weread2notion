@@ -136,3 +136,9 @@ weread_cookies.json
 # Selenium
 chromedriver
 geckodriver
+
+# Shell scripts
+*.sh
+
+# Chrome
+chrome-debug-weread/
