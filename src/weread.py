@@ -8,6 +8,7 @@ from constants import (
     LOG_PREFIX_BOOK_INFO,
     LOG_PREFIX_BOOKMARKS,
     LOG_PREFIX_CHAPTER_INFO,
+    LOG_PREFIX_CONNECTION_TEST,
     LOG_PREFIX_NOTEBOOK_LIST,
     LOG_PREFIX_READ_INFO,
     LOG_PREFIX_REVIEWS,
@@ -20,7 +21,6 @@ from constants import (
     WEREAD_NOTEBOOKS_URL,
     WEREAD_READ_PROGRESS_URL,
     WEREAD_REVIEW_LIST_URL,
-    LOG_PREFIX_try_connectION_TEST,
 )
 from logger import logger
 from utils import parse_cookie_string
@@ -244,7 +244,7 @@ class WeReadClient:
         try:
             # 使用_fetch进行连接测试
             response_data = self._fetch(
-                WEREAD_NOTEBOOKS_URL, log_prefix=LOG_PREFIX_try_connectION_TEST
+                WEREAD_NOTEBOOKS_URL, log_prefix=LOG_PREFIX_CONNECTION_TEST
             )
             if response_data is not None:
                 self._connected = True
